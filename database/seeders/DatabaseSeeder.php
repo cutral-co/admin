@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            ProvinciasSeeder::class,
+            BarriosSeeder::class,
             PermissionsDemoSeeder::class,
         ]);
     }

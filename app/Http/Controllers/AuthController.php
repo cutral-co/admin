@@ -2,30 +2,38 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
+use App\Http\Requests\User\LoginRequest;
+use App\Http\Resources\UserResource;
+
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
         $credentials = $request->only('cuit', 'password');
 
-        $validator = Validator::make($credentials, [
-            'cuit' => 'required|min:11|max:11',
-            'password' => 'required|string'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 422);
-        }
-
-        if (!$token = JWTAuth::attempt($credentials)) {
+        if (!JWTAuth::attempt($credentials)) {
             return sendResponse(null, 'Credenciales invalidas', 400);
         }
 
-        return $this->respondWithToken($token);
+        $user = auth()->user();
+        $user = User::where('id', $user->id)->with('person')->first();
+
+        return sendResponse(UserResource::AuthWithToken($user));
+    }
+
+    public function get_user()
+    {
+        return response()->json(['user' => auth()->user()]);
+    }
+
+    public function refresh()
+    {
+        return $this->respondWithToken(JWTAuth::refresh());
     }
 
     public function logout(Request $request)
@@ -45,25 +53,5 @@ class AuthController extends Controller
             'status' => true,
             'message' => 'User has been logged out'
         ]);
-    }
-
-    public function get_user()
-    {
-        return response()->json(['user' => auth()->user()]);
-    }
-
-    public function refresh()
-    {
-        return $this->respondWithToken(JWTAuth::refresh());
-    }
-
-    protected function respondWithToken($token)
-    {
-        $data = [
-            'user' => auth()->user(),
-            'token' => $token,
-        ];
-
-        return sendResponse($data);
     }
 }

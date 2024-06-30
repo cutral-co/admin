@@ -12,9 +12,14 @@ class Person extends Model
         'id',
         'cuit',
         'name',
+        'lastname',
+        'is_company',
+
+        /* Datos de contacto */
         'email',
         'phone',
 
+        /* Direaccion Micro */
         'calle',
         'altura',
         'manzana',
@@ -22,6 +27,7 @@ class Person extends Model
         'piso',
         'depto',
 
+        /* Direccion Macro */
         'barrio_id',
         'municipio',
         'barrio',
@@ -51,6 +57,10 @@ class Person extends Model
 
     protected $appends = ['direccion'];
 
+    protected $casts = [
+        'is_company' => 'boolean',
+    ];
+
     public function user()
     {
         return $this->hasOne(User::class);
@@ -68,6 +78,10 @@ class Person extends Model
 
     public function getDireccionAttribute()
     {
+        if (!$this->call && !$this->altura) {
+            return null;
+        }
+
         return [
             'calle' => $this->calle,
             'altura' => $this->altura,
@@ -77,8 +91,9 @@ class Person extends Model
             'depto' => $this->depto,
 
             'municipio' => $this->municipio,
-            'barrio' => $this->barrio_id ? $this->barrio_municipal->name : $this->barrio,
-            'provincia' => $this->provincia ? $this->provincia : $this->barrio_municipal->provincia->name,
+            'barrio' => $this->barrio_id ? $this->barrio_municipal : $this->barrio,
+            'provincia' => $this->provincia ? $this->provincia : ($this->barrio_municipal ?  $this->barrio_municipal->provincia : null),
+            'is_cutral' => (bool)$this->barrio_id
         ];
     }
 }

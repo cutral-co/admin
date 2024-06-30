@@ -8,6 +8,8 @@ class User extends \App\Models\Authenticatable\Auth
         'id',
         'cuit',
         'password',
+        'person_id',
+        'is_verified'
     ];
 
     protected $hidden = [
@@ -15,6 +17,10 @@ class User extends \App\Models\Authenticatable\Auth
         'password',
         'created_at',
         'updated_at',
+    ];
+
+    protected $casts = [
+        'is_verified' => 'boolean',
     ];
 
     public function person()

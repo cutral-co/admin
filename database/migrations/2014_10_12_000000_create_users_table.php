@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('cuit', 11)->unique();
             $table->string('password');
 
+            $table->boolean('is_verified')->default(0);
+
             $table->unsignedBigInteger('person_id')->nullable();
             $table->timestamps();
 

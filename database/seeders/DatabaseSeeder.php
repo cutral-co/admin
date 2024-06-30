@@ -15,11 +15,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('users')->insert([
-            'cuit' => '20999999991',
-            'password' => Hash::make('20999999991'),
-        ]);
-
         $this->call([
             ProvinciasSeeder::class,
             BarriosSeeder::class,

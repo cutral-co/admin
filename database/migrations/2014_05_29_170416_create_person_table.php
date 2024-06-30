@@ -15,21 +15,28 @@ return new class extends Migration
             $table->id();
             $table->string('cuit')->unique();
             $table->string('name');
+            $table->string('lastname')->nullable();
+            $table->boolean('is_company')->default(0);
 
-            $table->string('email');
-            $table->string('phone');
-            $table->string('calle');
-            $table->string('altura');
+            /* Datos de contacto */
+            $table->string('email')->nullable()->unique();
+            $table->string('phone')->nullable();
+
+            /* Direaccion Micro */
+            $table->string('calle')->nullable();
+            $table->string('altura')->nullable();
             $table->string('manzana')->nullable();
             $table->string('lote')->nullable();
             $table->string('piso')->nullable();
             $table->string('depto')->nullable();
 
+            /* Direccion Macro */
             $table->unsignedBigInteger('barrio_id')->nullable();
             $table->string('municipio')->nullable();
             $table->string('barrio')->nullable();
             $table->unsignedBigInteger('provincia_id')->nullable();
 
+            /* Relaciones */
             $table->foreign('barrio_id')->references('id')->on('barrios_municipio');
             $table->foreign('provincia_id')->references('id')->on('provincias');
 

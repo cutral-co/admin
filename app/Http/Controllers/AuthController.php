@@ -171,18 +171,4 @@ class AuthController extends Controller
             return log_send_response($log);
         }
     }
-
-    private function getUserApps($appsWL): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
-    {
-        $user = User::find(auth()->user()->id);
-
-        $apps = App::where('enabled', 1)->get();
-        if (!$user->hasRole('sudo')) {
-            $apps = AppResource::collection($apps);
-            $apps = AppController::filterForPermission($apps, auth()->user());
-            $apps = AppController::filterForWlApps($apps, $appsWL);
-        }
-
-        return AppResource::collection($apps);
-    }
 }

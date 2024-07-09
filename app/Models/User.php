@@ -17,6 +17,8 @@ class User extends \App\Models\Authenticatable\Auth
         'password',
         'created_at',
         'updated_at',
+        'permissions',
+        'roles'
     ];
 
     protected $casts = [

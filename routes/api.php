@@ -23,11 +23,11 @@ Route::group(['middleware' => ['jwt.verify']], function () {
 
     Route::group(['middleware' => ['user_verified']], function () {
         Route::post('cambios_datos_usuario', [AuthController::class, 'cambios_datos_usuario']);
-
-        Route::get('barrios', [BarrioController::class, 'index']);
-        Route::get('provincias', [ProvinciaController::class, 'index']);
     });
 });
+
+Route::get('barrios', [BarrioController::class, 'index']);
+Route::get('provincias', [ProvinciaController::class, 'index']);
 
 Route::get('logs', [LogController::class, 'index']);
 Route::get('logs/{id}', [LogController::class, 'show']);

@@ -1,4 +1,5 @@
 <?php
+
 use Symfony\Component\HttpFoundation\File\File;
 use Illuminate\Support\Facades\Storage;
 
@@ -68,8 +69,9 @@ if (!function_exists('get_file')) {
     }
 }
 
-if(!function_exists('log_send_response')){
-    function log_send_response($log){
+if (!function_exists('log_send_response')) {
+    function log_send_response($log)
+    {
         if (!property_exists($log, 'attributes')) {
             $log->id = '1A';
             $log->message = 'Falló el log';
@@ -78,5 +80,20 @@ if(!function_exists('log_send_response')){
             return sendResponse(null, ['general' => 'Ha ocurrido un error durante la consulta. Código ' . $log->id], 490);
         }
         return sendResponse(null, ['general' => $log->message], 490);
+    }
+}
+
+if (!function_exists('simpleXmlToArray')) {
+    function simpleXmlToArray($xmlObject)
+    {
+        $array = [];
+        foreach ($xmlObject as $key => $value) {
+            if (count($value->children()) === 0) {
+                $array[$key] = (string)$value;
+            } else {
+                $array[$key] = simpleXmlToArray($value);
+            }
+        }
+        return $array;
     }
 }

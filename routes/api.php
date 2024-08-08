@@ -6,7 +6,8 @@ use App\Http\Controllers\{
     LogController,
     ProvinciaController,
     TestController,
-    UserController
+    UserController,
+    TributariaController
 };
 
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,7 @@ Route::group(['middleware' => ['jwt.verify']], function () {
 
 Route::get('barrios', [BarrioController::class, 'index']);
 Route::get('provincias', [ProvinciaController::class, 'index']);
+Route::post('tributaria', [TributariaController::class, 'index']);
 
 Route::get('logs', [LogController::class, 'index']);
 Route::get('logs/{id}', [LogController::class, 'show']);

@@ -22,7 +22,11 @@ class TributariaController extends Controller
             try {
                 $client = new SoapClient(null, $options);
 
-                $response =  $client->__doRequest($this->getXMLRequest($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
+                if ($request->type === 'SW_EmitirCompPagoDeudaVenc') {
+                    $response =  $client->__doRequest($this->getXMLRequestEmitirCompPagoDeudaVenc($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
+                } else {
+                    $response =  $client->__doRequest($this->getXMLRequest($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
+                }
                 preg_match('/<return xsi:type="xsd:string">(.*?)<\/return>/s', $response, $matches);
 
                 if (isset($matches[1])) {
@@ -42,8 +46,8 @@ class TributariaController extends Controller
                 return sendResponse(null, $e->getMessage(), 301);
             }
         } catch (\Exception $e) {
-            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
-            return log_send_response($log);
+            $a = activity('error')->withProperties($e->getTrace())->log($e->getMessage());
+            return sendResponse(null, "Error inesperado código: $a->id", 301);
         }
     }
 
@@ -76,20 +80,43 @@ class TributariaController extends Controller
         // Output the XML to verify
         Header('Content-type: text/xml');
         return $xml->asXML();
+    }
 
-        /* $requestBody = <<<XML
-            <soapenv:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:urn="urn:uSWConsultaTributariaIntf-ISWConsultaTributaria">
-                <soapenv:Header/>
-                <soapenv:Body>
-                    <urn:SW_ConsultarDeuda soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-                        <pTipoImponible xsi:type="xsd:string">E</pTipoImponible>
-                        <pNroImponible xsi:type="xsd:string">527387</pNroImponible>
-                        <pFechaAct xsi:type="xsd:string">15/04/2024</pFechaAct>
-                        <pParaInforme xsi:type="xsd:string">N</pParaInforme>
-                        <Key xsi:type="xsd:string">11111111110000000000</Key>
-                    </urn:SW_ConsultarDeuda>
-                </soapenv:Body>
-            </soapenv:Envelope>
-            XML; */
+    private function getXMLRequestEmitirCompPagoDeudaVenc(Request $request)
+    {
+        $attributes = $request->params;
+        $key = env('KEY_TRIBUTARIA');
+
+        $xml = new \SimpleXMLElement("
+        <soapenv:Envelope
+            xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+            xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+            xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/'
+            xmlns:urn='urn:uSWConsultaTributariaIntf-ISWConsultaTributaria'
+        >
+            <soapenv:Header/>
+            <soapenv:Body>
+                <urn:SW_EmitirCompPagoDeudaVenc soapenv:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <XMLGrupoNroComp xsi:type='xsd:string'>
+                        <VFPDATA>
+                        </VFPDATA>
+                    </XMLGrupoNroComp>
+                    <Key xsi:type='xsd:string'>{$key}</Key>
+                </urn:SW_EmitirCompPagoDeudaVenc>
+            </soapenv:Body>
+        </soapenv:Envelope>");
+
+        $namespaces = $xml->getNamespaces(true);
+        $vfpData = $xml->xpath("//soapenv:Body/urn:SW_EmitirCompPagoDeudaVenc/XMLGrupoNroComp")[0];
+
+        foreach ($attributes['DETALLEPERIODOSSELECCIONADOS'] as $detalle) {
+            $detalleElement = $vfpData->addChild('DETALLEPERIODOSSELECCIONADOS');
+
+            foreach ($detalle as $key => $value) {
+                $detalleElement->addChild($key, $value);
+            }
+        }
+
+        return $xml->asXML();
     }
 }

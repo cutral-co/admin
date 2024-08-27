@@ -22,7 +22,8 @@ class TributariaController extends Controller
             try {
                 $client = new SoapClient(null, $options);
 
-                if ($request->type === 'SW_EmitirCompPagoDeudaVenc') {
+                if ($request->type === 'SW_EmitirCompPagoDeudaVenc' || $request->type === 'SW_EmitirCompPagoNoVenc') {
+                    /*  return $this->getXMLRequestEmitirCompPagoDeudaVenc($request); */
                     $response =  $client->__doRequest($this->getXMLRequestEmitirCompPagoDeudaVenc($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
                 } else {
                     $response =  $client->__doRequest($this->getXMLRequest($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
@@ -33,6 +34,9 @@ class TributariaController extends Controller
                     // El contenido extraído está escapado, desescaparlo
                     $xmlContent = htmlspecialchars_decode($matches[1]);
 
+                    if ($request->type === 'SW_EmitirCompPagoDeudaVenc') {
+                        return sendResponse($xmlContent);
+                    }
                     // Cargar el XML limpio
                     $xmlObject = simplexml_load_string($xmlContent);
 
@@ -47,7 +51,7 @@ class TributariaController extends Controller
             }
         } catch (\Exception $e) {
             $a = activity('error')->withProperties($e->getTrace())->log($e->getMessage());
-            return sendResponse(null, "Error inesperado código: $a->id", 301);
+            return sendResponse(null, $e->getMessage(), 301);
         }
     }
 
@@ -87,6 +91,7 @@ class TributariaController extends Controller
         $attributes = $request->params;
         $key = env('KEY_TRIBUTARIA');
 
+        $type = $request->type;
         $xml = new \SimpleXMLElement("
         <soapenv:Envelope
             xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
@@ -96,24 +101,33 @@ class TributariaController extends Controller
         >
             <soapenv:Header/>
             <soapenv:Body>
-                <urn:SW_EmitirCompPagoDeudaVenc soapenv:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <urn:$type soapenv:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                     <XMLGrupoNroComp xsi:type='xsd:string'>
                         <VFPDATA>
                         </VFPDATA>
                     </XMLGrupoNroComp>
                     <Key xsi:type='xsd:string'>{$key}</Key>
-                </urn:SW_EmitirCompPagoDeudaVenc>
+                </urn:$type>
             </soapenv:Body>
         </soapenv:Envelope>");
 
-        $namespaces = $xml->getNamespaces(true);
-        $vfpData = $xml->xpath("//soapenv:Body/urn:SW_EmitirCompPagoDeudaVenc/XMLGrupoNroComp")[0];
+        $vfpData = $xml->xpath("//soapenv:Body/urn:$type/XMLGrupoNroComp/VFPDATA")[0];
 
-        foreach ($attributes['DETALLEPERIODOSSELECCIONADOS'] as $detalle) {
-            $detalleElement = $vfpData->addChild('DETALLEPERIODOSSELECCIONADOS');
+        if ($request->type === 'SW_EmitirCompPagoDeudaVenc') {
+            foreach ($attributes['DETALLEPERIODOSSELECCIONADOS'] as $detalle) {
+                $detalleElement = $vfpData->addChild('DETALLEPERIODOSSELECCIONADOS');
 
-            foreach ($detalle as $key => $value) {
-                $detalleElement->addChild($key, $value);
+                foreach ($detalle as $key => $value) {
+                    $detalleElement->addChild($key, $value);
+                }
+            }
+        } else if ($request->type === 'SW_EmitirCompPagoNoVenc') {
+            foreach ($attributes['DETALLECOMPROBSELECCIONADOS'] as $detalle) {
+                $detalleElement = $vfpData->addChild('DETALLECOMPROBSELECCIONADOS');
+
+                foreach ($detalle as $key => $value) {
+                    $detalleElement->addChild($key, $value);
+                }
             }
         }
 

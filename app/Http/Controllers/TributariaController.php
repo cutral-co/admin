@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use MercadoPago\Client\Preference\PreferenceClient;
 use SoapClient;
 use SoapFault;
+
+use MercadoPago\MercadoPagoConfig;
+
 
 class TributariaController extends Controller
 {
@@ -132,5 +136,27 @@ class TributariaController extends Controller
         }
 
         return $xml->asXML();
+    }
+
+    public function pagar_online(Request $request)
+    {
+        /* Test */
+        MercadoPagoConfig::setAccessToken('');
+
+        $preference = new PreferenceClient();
+
+        $client = new PreferenceClient();
+        $preference = $client->create([
+            "external_reference" => "6ZL0SBWDT20240905000047584433",
+            "items" => array(
+                array(
+                    "title" => str_replace('/', '-', '11/002908598/87'), // 11-002908598-87
+                    "quantity" => 1,
+                    "unit_price" => 1743345
+                )
+            )
+        ]);
+
+        return sendResponse($preference);
     }
 }

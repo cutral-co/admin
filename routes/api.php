@@ -28,6 +28,7 @@ Route::group(['middleware' => ['jwt.verify']], function () {
 });
 
 Route::get('barrios', [BarrioController::class, 'index']);
+Route::get('pagar', [TributariaController::class, 'pagar_online']);
 Route::get('provincias', [ProvinciaController::class, 'index']);
 Route::post('tributaria', [TributariaController::class, 'index']);
 

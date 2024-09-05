@@ -190,6 +190,7 @@ class TributariaController extends Controller
         $userPagoOnline->mp_preference = json_encode($preference);
         $userPagoOnline->save();
 
+
         return sendResponse($preference);
     }
 

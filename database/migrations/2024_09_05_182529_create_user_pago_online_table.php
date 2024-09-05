@@ -17,8 +17,12 @@ return new class extends Migration
             $table->string('opid')->unique();
             $table->string('nro_comprobante')->unique();
             $table->json('comprobante');
+<<<<<<< HEAD
             $table->string('mp_preference_id')->unique()->nullable();
             $table->json('mp_preference')->nullable();
+=======
+            $table->json('mp_preference');
+>>>>>>> e89a489f0651fc13f8ba51320030dd6f1b2e6220
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users');

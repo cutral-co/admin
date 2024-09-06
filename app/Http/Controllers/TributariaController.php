@@ -37,7 +37,7 @@ class TributariaController extends Controller
                     // El contenido extraído está escapado, desescaparlo
                     $xmlContent = htmlspecialchars_decode($matches[1]);
 
-                    if ($request->type === 'SW_EmitirCompPagoDeudaVenc' && !$request->pago_online) {
+                    if ($request->type === 'SW_EmitirCompPagoDeudaVenc' && !$request->method) {
                         return sendResponse($xmlContent);
                     }
                     // Cargar el XML limpio
@@ -47,7 +47,7 @@ class TributariaController extends Controller
                         return sendResponse(null, 'Failed loading XML', 301);
                     }
 
-                    if ($request->pago_online) {
+                    if ($request->method) {
                         return $this->pagar_online($xmlObject);
                     }
 
@@ -98,7 +98,7 @@ class TributariaController extends Controller
         $attributes = $request->params;
         $key = env('KEY_TRIBUTARIA');
 
-        $pagoOnline = $request->pago_online ? $request->pago_online : '';
+        $pagoOnline = $request->method ? $request->method : '';
 
         $type = $request->type;
         $xml = new \SimpleXMLElement("
@@ -157,26 +157,26 @@ class TributariaController extends Controller
                 'opid' => $opid,
                 'nro_comprobante' => $nro_comprobante,
                 'comprobante' => json_encode($operacion["comprobantes"]["comprobante"]),
+                'importe' => $this->format_importe($operacion["comprobantes"]["comprobante"]['importe'])
             ]);
-            return $this->pagar_online_mp($opid);
+            return sendResponse($operacion);
         } catch (\Exception $e) {
             return sendResponse(null, $e->getMessage(), 301);
         }
     }
 
-    private function pagar_online_mp($opid)
+    public function pagar_online_mp(Request $request)
     {
-        /* $operacion = $request->operacion; */
-        $userPagoOnline = UserPagoOnline::where('opid', $opid)->first();
-        $comprobante = json_decode($userPagoOnline->comprobante);
+        $operacion = $request->operacion;
+        $userPagoOnline = UserPagoOnline::where('opid', $operacion['opid'])->first();
 
         $preferencia = [
-            "external_reference" => $opid,
+            "external_reference" => $operacion['opid'],
             "items" => [
                 [
                     "title" =>  $userPagoOnline->nro_comprobante,
                     "quantity" => 1,
-                    "unit_price" => $this->format_importe($comprobante->importe)
+                    "unit_price" => $userPagoOnline->importe
                 ]
             ]
         ];
@@ -190,8 +190,7 @@ class TributariaController extends Controller
         $userPagoOnline->mp_preference = json_encode($preference);
         $userPagoOnline->save();
 
-
-        return sendResponse($preference);
+        return sendResponse($preference->init_point);
     }
 
     protected function format_importe($importe)

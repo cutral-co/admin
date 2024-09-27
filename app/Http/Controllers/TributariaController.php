@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\UserPagoOnline;
 use Illuminate\Http\Request;
-
+use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\MercadoPagoConfig;
 
@@ -178,7 +178,14 @@ class TributariaController extends Controller
                     "quantity" => 1,
                     "unit_price" => $userPagoOnline->importe
                 ]
-            ]
+            ],
+
+            /* https://www.tuweb.com/success?collection_id=123456789&collection_status=approved&external_reference=null&payment_type=credit_card&merchant_order_id=987654321z */
+            "back_urls" => array(
+                "success" => "http://admin_cco/api/mp/success",
+                "failure" => "http://test.com/failure",
+                "pending" => "http://test.com/pending"
+            ),
         ];
 
         MercadoPagoConfig::setAccessToken(env('MP_PRIVATE_TOKEN'));
@@ -191,6 +198,22 @@ class TributariaController extends Controller
         $userPagoOnline->save();
 
         return sendResponse($preference->init_point);
+    }
+
+    public function success(Request $request)
+    {
+
+        activity()->withProperties($request->all())->log('asdasd');
+    }
+
+    public function get_preferenicia(Request $request)
+    {
+        MercadoPagoConfig::setAccessToken(env('MP_PRIVATE_TOKEN'));
+
+        $payment = new PaymentClient();
+        $preference = $payment->get($request->id);
+
+        return sendResponse($preference);
     }
 
     protected function format_importe($importe)

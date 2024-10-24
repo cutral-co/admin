@@ -9,7 +9,7 @@ use App\Http\Controllers\{
     UserController,
     TributariaController
 };
-
+use App\Http\Controllers\Eventos\RegistroController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login']);
@@ -39,3 +39,8 @@ Route::post('tributaria', [TributariaController::class, 'index']);
 Route::get('logs', [LogController::class, 'index']);
 Route::get('logs/{id}', [LogController::class, 'show']);
 Route::post('dar_visto', [LogController::class, 'update']);
+
+/** Evento 2024-11 */
+
+Route::post('evento_202411/registro', [RegistroController::class, 'store']);
+

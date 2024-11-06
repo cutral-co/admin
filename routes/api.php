@@ -43,4 +43,4 @@ Route::post('dar_visto', [LogController::class, 'update']);
 /** Evento 2024-11 */
 
 Route::post('evento_202411/registro', [RegistroController::class, 'store']);
-
+Route::post('evento_202411/mp/success', [RegistroController::class, 'success']);

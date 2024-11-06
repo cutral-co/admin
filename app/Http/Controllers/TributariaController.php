@@ -9,10 +9,9 @@ use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\MercadoPagoConfig;
 
-
 class TributariaController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, $redirect = null)
     {
         try {
             $options = [
@@ -51,6 +50,9 @@ class TributariaController extends Controller
                         return $this->pagar_online($xmlObject);
                     }
 
+                    if ($redirect) {
+                        return redirect()->away($redirect);
+                    }
                     return sendResponse($xmlObject);
                 }
             } catch (\SoapFault $e) {
@@ -179,13 +181,12 @@ class TributariaController extends Controller
                     "unit_price" => $userPagoOnline->importe
                 ]
             ],
-
-            /* https://www.tuweb.com/success?collection_id=123456789&collection_status=approved&external_reference=null&payment_type=credit_card&merchant_order_id=987654321z */
-            "back_urls" => array(
-                "success" => "http://admin_cco/api/mp/success",
+            "back_urls" => [
+                "success" => "https://bb.cutralco.gob.ar/admin/public/api/mp/success",
                 "failure" => "http://test.com/failure",
                 "pending" => "http://test.com/pending"
-            ),
+            ],
+            "auto_return" => "approved"
         ];
 
         MercadoPagoConfig::setAccessToken(env('MP_PRIVATE_TOKEN'));
@@ -202,8 +203,35 @@ class TributariaController extends Controller
 
     public function success(Request $request)
     {
+        $userPagoOnline = UserPagoOnline::where('mp_preference_id', $request->preference_id)->first();
+        $userPagoOnline->approved = json_encode($request->all());
+        $userPagoOnline->save();
 
-        activity()->withProperties($request->all())->log('asdasd');
+        $infoPago = "collection_id={$request->payment_id};";
+        $infoPago .= "collection_status={$request->collection_status};";
+        $infoPago .= "payment_id={$request->payment_id};";
+        $infoPago .= "status={$request->status};";
+        $infoPago .= "external_reference={$request->external_reference};";
+        $infoPago .= "payment_type={$request->payment_type};";
+        $infoPago .= "merchant_order_id={$request->merchant_order_id};";
+        $infoPago .= "preference_id={$request->preference_id};";
+        $infoPago .= "site_id={$request->site_id};";
+        $infoPago .= "processing_mode={$request->processing_mode};";
+        $infoPago .= "merchant_account_id={$request->merchant_account_id};";
+
+        $newRequest = new Request([
+            'type' => 'SW_RegistrarPago',
+            'params' => [
+                'pOpID' => "$request->opid",
+                'pPagoElectronico' => 'mercadopago',
+                'pEstado' => 'PAGADO',
+                'pMensaje' => 'Prueba',
+                'pMedioPago' => 'Mercado Pago',
+                'pInfoPago' => $infoPago,
+            ],
+        ]);
+
+        return $this->index($newRequest, 'https://www.cutralco.gob.ar/');
     }
 
     public function get_preferenicia(Request $request)

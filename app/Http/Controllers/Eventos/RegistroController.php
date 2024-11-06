@@ -46,7 +46,7 @@ class RegistroController extends Controller
             $uniqid = uniqid();
             $registro->hash = "$ev_id-$uniqid-$registro->id";
 
-            $registro =$this->create_mp_preference($registro);
+            $registro = $this->create_mp_preference($registro);
 
             return sendResponse($registro);
         } catch (\Exception $e) {
@@ -62,13 +62,13 @@ class RegistroController extends Controller
                 [
                     "title" =>  'Evento 2024-11',
                     "quantity" => 1,
-                    "unit_price" => '4815.54'
+                    "unit_price" => 4815.54
                 ]
             ],
 
             /* https://www.tuweb.com/success?collection_id=123456789&collection_status=approved&external_reference=null&payment_type=credit_card&merchant_order_id=987654321z */
-            "back_urls" => array(
-                "success" => "http://admin_cco/api/mp/success",
+            "redirect_urls" => array(
+                "success" => "https://bb.cutralco.gob.ar/admin/public/api/evento_202411/mp/success",
                 "failure" => "http://test.com/failure",
                 "pending" => "http://test.com/pending"
             ),
@@ -83,6 +83,11 @@ class RegistroController extends Controller
         $registro->mp_preference = json_encode($preference);
         $registro->save();
 
-        return $registro;
+        return $preference->init_point;
+    }
+
+    public function success(Request $request)
+    {
+        activity()->withProperties($request->all())->log('asdasd');
     }
 }

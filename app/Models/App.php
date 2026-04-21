@@ -17,6 +17,7 @@ class App extends Model
         'url',
         'enabled',
         'image',
+        'is_internal',
         'required_permission',
     ];
 

@@ -6,10 +6,10 @@ use App\Http\Controllers\{
     LogController,
     ProvinciaController,
     TestController,
-    UserController,
     TributariaController
 };
-use App\Http\Controllers\Eventos\RegistroController;
+
+use App\Http\Controllers\DomicilioElectronico\DomicilioElectronicoController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login']);
@@ -19,6 +19,10 @@ Route::post('activate_user', [AuthController::class, 'activate_user']);
 Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
+
+    /** Domicilio Electrónico */
+    Route::post('user/domicilio-electronico/set', [DomicilioElectronicoController::class, 'set_domicilio']);
+    Route::post('user/domicilio-electronico/has_new_message', [DomicilioElectronicoController::class, 'has_new_message']);
 
     Route::post('file', [TestController::class, 'file']);
 
@@ -39,8 +43,3 @@ Route::post('tributaria', [TributariaController::class, 'index']);
 Route::get('logs', [LogController::class, 'index']);
 Route::get('logs/{id}', [LogController::class, 'show']);
 Route::post('dar_visto', [LogController::class, 'update']);
-
-/** Evento 2024-11 */
-
-Route::post('evento_202411/registro', [RegistroController::class, 'store']);
-Route::post('evento_202411/mp/success', [RegistroController::class, 'success']);

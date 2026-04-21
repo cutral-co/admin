@@ -2,23 +2,19 @@
 
 namespace App\Http\Controllers\DomicilioElectronico;
 
-use App\Http\Controllers\HttpClient\FotoMultasTrait;
 use App\Models\DomicilioElectronico\{
     DomicilioNotificacion,
     Notificacion,
     NotificacionArchivo,
     TipoDestinatario,
-    Log as DELog,
+    Log,
 };
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Storage};
 
 
 trait DomicilioElectronicoTrait
-{
-    use FotoMultasTrait;
-    // Modificar el funcionamiento segun un solo parametro
+{    // Modificar el funcionamiento segun un solo parametro
     private function saveArchivos($files, $domicilio_notificacion,  $type = null, $name = null)
     {
         $file_paths = [];
@@ -60,31 +56,6 @@ trait DomicilioElectronicoTrait
 
         return $file_paths;
     }
-
-    private function notificacionInfraccion($documento)
-    {
-        $infracciones = $this->get_infracciones_no_notificadas($documento);
-
-        if ($infracciones && $infracciones->data) {
-            foreach ($infracciones->data as  $infraccion) {
-
-                if ($infraccion['error'] != null) {
-                    $log['message'] = 'No se pudo notificar una infraccion- fallo el job';
-
-                    $log['attributes'] = json_encode(['documento' => $documento, 'acta' => $infraccion['numero_infraccion'], 'error' => $infraccion['error']]);
-                    DeLog::create([$log]);
-                }
-            }
-        } else {
-            if ($infracciones['error']) {
-                $log['message'] = 'Ocurrio un error';
-
-                $log['attributes'] = json_encode(['documento' => $documento,  'error' => $infracciones['error']]);
-                DeLog::create([$log]);
-            }
-        }
-    }
-
     private function validateOrResponse(Request $request)
     {
         $destinatarios = explode(',', $request->destinatarios);
@@ -124,7 +95,7 @@ trait DomicilioElectronicoTrait
      * @param array $params  Los parámetros de la notificación, 'title', 'body', 'origin' y 'data'.
      * @param int   $domicilio_electronico_id  El ID del domicilio electrónico al que se enviará la notificación.
      * @param TipoDestinatario $tipo_destinatario  El tipo de destinatario de la notificación.
-     * @param int   $user_id       El ID del usuario destinatario.
+     * @param int  $user_id       El ID del usuario destinatario.
      * @param string $identificacion (Opcional) La identificación asociada con la notificación.
      *
      * @return DomicilioNotificacion El objeto DomicilioNotificacion recién creado.
@@ -135,11 +106,12 @@ trait DomicilioElectronicoTrait
         TipoDestinatario $tipo_destinatario,
         $identificacion = null
     ) {
+
         $notificacion = Notificacion::create([
             'origin_id' => $params['origin_id'],
             'title' => $params['title'],
             'body' => $params['body'],
-            'hash' => $params['hash'] ?? null,
+            'hash' => md5(uniqid(rand(), true)),
             'block' => isset($params['block']) ? (bool) $params['block'] : false,
             'data' => isset($params['data']) ? json_encode($params['data']) : null
         ]);
@@ -151,60 +123,13 @@ trait DomicilioElectronicoTrait
             'fecha_recibido' => \Carbon\Carbon::now()->toDateTimeString(),
         ]);
 
-        DELog::create([
+        Log::create([
             'domicilio_id' =>  $domicilio_electronico_id,
             'notificacion_id' => $notificacion->id,
             'tipo_destinatario' => $tipo_destinatario->name,
             'message' => 'Se notifico correctamente al usuario',
             'attributes' => $identificacion ? json_encode(['identificacion' => $identificacion]) : null,
         ]);
-
-        return $domicilio_notificacion;
-    }
-
-    /**
-     * Crea una notificación, la asocia a un domicilio electrónico y envía un aviso por correo electrónico.
-     *
-     * @param array   $params                Los parámetros de la notificación, 'title', 'body', 'origin' y 'data'.
-     * @param object  $domicilioElectronico  El objeto del domicilio electrónico.
-     *
-     * @return DomicilioNotificacion El objeto DomicilioNotificacion recién creado.
-     */
-    private function createDomicilioNotificacionAviso($params, $domicilioElectronico)
-    {
-        $notificacion = Notificacion::create([
-            'origin_id' => $params['origin_id'],
-            'title' => $params['title'],
-            'body' => $params['body'],
-            'hash' => $params['hash'] ?? null,
-            'block' => isset($params['block']) ? (bool) $params['block'] : false,
-        ]);
-
-        $tipoDestinatario = TipoDestinatario::where('name', 'destinatario')->first();
-
-        $domicilio_notificacion =  DomicilioNotificacion::create([
-            'domicilio_id' =>  $domicilioElectronico->id,
-            'notificacion_id' => $notificacion->id,
-            'tipo_destinatario_id' => $tipoDestinatario->id,
-            'fecha_recibido' => \Carbon\Carbon::now()->toDateTimeString(),
-        ]);
-
-        DELog::create([
-            'domicilio_id' =>  $domicilioElectronico->id,
-            'notificacion_id' => $notificacion->id,
-            'tipo_destinatario' => $tipoDestinatario->name,
-            'message' => 'Se notifico correctamente al usuario',
-            'attributes' => $domicilioElectronico->documento ? json_encode(['identificacion' => $domicilioElectronico->documento]) : null,
-        ]);
-
-        $cuerpoEmail = view("Email.aviso-notificacion-dom-electronico")->render();
-
-        sendEmailWalter($domicilioElectronico->email, 'Nueva notificación electrónica - Municipalidad de Neuquén', $cuerpoEmail, "aviso-notificacion-electronica");
-
-        // TODO: Si algun dia de aplica lo de copia carbon, acomodar esto y agregar las otras notificaciones
-        // foreach ($request->email_aviso_notificacion as $email) {
-        //     sendEmail($email, 'Notificación Electrónica - Muni Express', 'Usted tiene una nueva notificacion en el Domicilio Electrónico');
-        // }
 
         return $domicilio_notificacion;
     }

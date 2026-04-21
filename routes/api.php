@@ -22,6 +22,7 @@ Route::group(['middleware' => ['jwt.verify']], function () {
 
     /** Domicilio Electrónico */
     Route::post('user/domicilio-electronico/set', [DomicilioElectronicoController::class, 'set_domicilio']);
+    Route::post('user/domicilio-electronico/enviar-notificacion', [DomicilioElectronicoController::class, 'enviar_notificacion']);
     Route::post('user/domicilio-electronico/has_new_message', [DomicilioElectronicoController::class, 'has_new_message']);
 
     Route::post('file', [TestController::class, 'file']);

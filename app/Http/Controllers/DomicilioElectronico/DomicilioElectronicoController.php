@@ -14,7 +14,7 @@ use App\Http\Resources\DomicilioElectronico\MensajeResource;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 use App\Models\DomicilioElectronico\{Domicilio, DomicilioNotificacion, Log, Notificacion, NotificacionArchivo, Origin, TipoDestinatario};
-use App\Http\Requests\DomicilioElectronico\{DomicilioRequest, BusquedaPorDniRequest, CheckDomicilioOrigenRequest, VerificarDomicilioRequest};
+use App\Http\Requests\DomicilioElectronico\{DomicilioRequest, BusquedaPorDniRequest, CheckDomicilioOrigenRequest, VerificarDomicilioRequest, EnviarNotificacionRequest};
 use App\Http\Requests\EnviarNotificacionDocuentoRequest;
 use App\Jobs\SendDomicilioElectronicoMessage;
 use App\Models\User;
@@ -22,6 +22,8 @@ use Carbon\Carbon;
 
 class DomicilioElectronicoController extends \App\Http\Controllers\Controller
 {
+    use DomicilioElectronicoTrait;
+
     public function set_domicilio(DomicilioRequest $request)
     {
         try {
@@ -60,6 +62,61 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
             ]);
 
             return sendResponse($domicilio);
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    public function enviar_notificacion(EnviarNotificacionRequest $request)
+    {
+        try {
+            $user = auth()->user();
+
+            $domicilio = Domicilio::where('user_id', $user->id)->first();
+
+            if (!$domicilio) {
+                return sendResponse(null, 'El usuario no tiene domicilio electrónico configurado', 404);
+            }
+
+            $origin = Origin::where('name', $request->origin)->first();
+
+            if (!$origin) {
+                return sendResponse(null, 'El origen especificado no existe', 404);
+            }
+
+            $params = [
+                'title' => $request->title,
+                'body' => $request->body,
+                'origin_id' => $origin->id,
+                'data' => $request->data ?? null,
+            ];
+
+            $tipo_destinatario = TipoDestinatario::where('name', 'destinatario')->first();
+
+            $domicilio_notificacion = $this->createDomicilioNotificacion(
+                $params,
+                $domicilio->id,
+                $tipo_destinatario,
+                $domicilio->documento
+            );
+
+            //$fechaFormateada = formatearFecha($domicilio_notificacion->fecha_recibido);
+            $mensaje = "Usted ha sido notificado en su domicilio electrónico. Para poder ver dicha notificación deberá ingresar a <a href='https://t/#/login'>Cutral Digital</a><br><b>Fecha de notificación: </b> hs.";
+            $subject = 'Nueva notificación electrónica - Municipalidad de Neuquén';
+
+            //sendEmail($domicilio->email, $subject, $mensaje);
+
+            Log::create([
+                'domicilio_id' => $domicilio->id,
+                'message' => 'Notificación enviada exitosamente',
+                'attributes' => json_encode([
+                    'title' => $request->title,
+                    'origin' => $request->origin,
+                ]),
+            ]);
+
+            return sendResponse(new MensajeResource($domicilio_notificacion));
         } catch (\Exception $e) {
             $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
             return log_send_response($log);

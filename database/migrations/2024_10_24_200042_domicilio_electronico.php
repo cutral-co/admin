@@ -145,6 +145,7 @@ return new class extends Migration {
                     $table->unsignedBigInteger('origin_id');
                     $table->string('title');
                     $table->text('body');
+                    $table->string('hash');
                     $table->boolean('block')->default(false);
                     $table->json('data')->nullable();
                     $table->softDeletes();

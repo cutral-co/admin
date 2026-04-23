@@ -134,7 +134,7 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
         }
     }
 
-    public function getNotificaciones()
+    public function notificaciones()
     {
         try {
             $user = auth()->user();

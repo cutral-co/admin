@@ -39,6 +39,7 @@ class UserResource extends JsonResource
         $user = self::getUser();
         $data = [
             'user' => $user,
+            'de' => $user->de,
             'roles' => $user->roles,
             'permissions' => $user->permissions,
             'apps' => self::getApps(),

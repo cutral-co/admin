@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
 
-    protected $permission = 'domElectronico.sendMessage';
-
     /**
      * Run the migrations.
      *
@@ -60,33 +58,11 @@ return new class extends Migration {
     }
 
     private function addPermission() {
-        $exists = DB::table('permissions')
-            ->where('name', $this->permission)
-            ->exists();
-
-        if (!$exists) {
-            DB::table('permissions')->insert([
-                'name' => $this->permission,
-                'guard_name' => 'web',
-                'description' => 'Permite enviar notificaciones a domicilios electrónicos'
-            ]);
-        }
+        // Permission removed from migration (now managed separately)
     }
 
     private function removePermission() {
-        $permissionId = DB::table('permissions')
-            ->where('name', $this->permission)
-            ->value('id');
-
-        if ($permissionId) {
-            DB::table('model_has_permissions')
-                ->where('permission_id', $permissionId)
-                ->delete();
-
-            DB::table('permissions')
-                ->where('name', $this->permission)
-                ->delete();
-        }
+        // Permission removed from migration
     }
 
     private function create_domicilio($down = false) {
@@ -128,7 +104,6 @@ return new class extends Migration {
                 DB::connection('de')->table('de_origin')->insert([
                     ['name' => 'mi-cutral-digital', 'descripcion' => 'Mi CutraL Digital', 'token' => 'TOKEN_MI_MUNI_DIGITAL'],
                     ['name' => 'test', 'descripcion' => 'Test', 'token' => 'TOKEN_TEST'],
-                    ['name' => 'sistema-multas', 'descripcion' => 'Monitoreo Vial Digital', 'token' => 'TOKEN_FOTO_MULTAS'],
                 ]);
             }
         } else {

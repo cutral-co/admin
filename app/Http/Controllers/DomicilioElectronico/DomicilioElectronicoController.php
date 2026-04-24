@@ -18,7 +18,6 @@ use App\Http\Requests\DomicilioElectronico\{DomicilioRequest, BusquedaPorDniRequ
 use App\Http\Requests\EnviarNotificacionDocuentoRequest;
 use App\Jobs\SendDomicilioElectronicoMessage;
 use App\Models\User;
-use Carbon\Carbon;
 
 class DomicilioElectronicoController extends \App\Http\Controllers\Controller
 {
@@ -148,7 +147,7 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
         }
     }
 
-    public function setView(Request $request)
+    public function set_view(Request $request)
     {
         try {
             DB::beginTransaction();
@@ -171,7 +170,7 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
         }
     }
 
-    public function setArchivado(Request $request)
+    public function set_archivado(Request $request)
     {
         try {
             DB::beginTransaction();
@@ -242,151 +241,6 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
             DB::rollBack();
             $log = LogController::save($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
             return sendResponse(null, "Ocurrió un error inesperado. Código: $log->id", 444);
-        }
-    }
-
-    // Enviar notificacion mediante DNI para fotomulta
-    public function enviar_notificacion_documento(EnviarNotificacionDocuentoRequest $request)
-    {
-        try {
-            $personInfo = WebLoginTrait::get_person_info($request->documento, $request->genero ?? '');
-
-            if ($personInfo == null || $personInfo->error != null) {
-                return sendResponse(null, ['general' => 'Ha habido un error durante la consulta'], 422);
-            }
-            if ($personInfo->value['error'] != null) {
-                return sendResponse(null, ['general' => $personInfo->value['error']], 423);
-            }
-            // $user = User::where('email', $personInfo->value['informacion']['correoElectronico']['direccion'])->first();
-            $bool = isset($personInfo->value) && $personInfo->value && isset($personInfo->value['informacion']) && $personInfo->value['informacion'];
-            $origin = Origin::where('name', $request->origin)->first();
-
-            $log['origin_id'] = $origin->id;
-            if ($bool) {
-                $user_id = $personInfo->value["informacion"]["usuarioID"];;
-                if ($user_id == 0) {
-                    $log['message'] = 'No existe un usuario de Muni Express asociado a la identificación';
-                    $log['attributes'] = json_encode(['response' => $personInfo]);
-                    Log::create($log);
-                    return sendResponse(null,  $log['message'], 404);
-                }
-                $domicilio_electronico = Domicilio::where('user_id', $user_id)->first();
-                if (!$domicilio_electronico) {
-                    $log['message'] = 'El usuario no tiene domicilio electronico.';
-                    $log['user_id'] = $user_id;
-                    $log['attributes'] = json_encode(['user_id' => $user_id, 'documento' => $request->documento]);
-                    Log::create($log);
-                    return sendResponse(null,  $log['message'], 404);
-                }
-                /* Paso todas las validaciones */
-                $params = $request->only(['title', 'body']);
-                $lineas = explode(",", $request->ul);
-                $ul = array_map('trim', $lineas);
-                $link = [
-                    'label' => "PAGAR ONLINE",
-                    'url' => trim($request->link)
-                ];
-                $params['data'] = ['ul' => $ul, 'link' => $link];
-                $params['origin_id'] = $origin->id;
-                $domicilio_notificacion = $this->createDomicilioNotificacion(
-                    $params,
-                    $domicilio_electronico->id,
-                    TipoDestinatario::where('name', 'destinatario')->first(),
-                    $request->documento
-                );
-                // envio de email
-                $fechaFormateada = formatearFecha($domicilio_notificacion->fecha_recibido);
-                $mensaje = "Usted ha sido notificado en su domicilio electrónico. Para poder ver dicha notificación deberá ingresar a <a href='https://weblogin.neuquencapital.gov.ar/#/login'>Muni Express</a><br><b>Fecha de notificación: </b> $fechaFormateada hs.";
-                $subject = 'Nueva notificación electrónica - Municipalidad de Neuquén';
-                sendEmail($domicilio_electronico->email, $subject, $mensaje);
-                foreach ($request->email_aviso_notificacion as $email) {
-                    sendEmail($email, 'Notificación Electrónica - Muni Express', $mensaje);
-                }
-                $this->saveArchivos($request->file('files'), $domicilio_notificacion);
-                // $request = $this->cambiar_fecha_acta($request->numero_infraccion);
-                return sendResponse(new MensajeResource($domicilio_notificacion));
-            } else {
-                $log['message'] = 'Problema para identificar al objeto';
-                $log['attributes'] = json_encode(['response' => $personInfo, 'documento' => $request->documento]);
-                Log::create($log);
-                return sendResponse(null,  $log['message'], 404);
-            }
-        } catch (\Exception $e) {
-            $log['message'] = 'Error general';
-            $log['attributes'] = json_encode($e->getTrace());
-            Log::create($log);
-            return sendResponse(null,  $e->getMessage(), 404);
-        }
-    }
-
-    public function enviar_notificacion_manual_origen(EnviarNotificacionDocuentoRequest $request)
-    {
-        try {
-            $personInfo = WebLoginTrait::get_person_info($request->documento, $request->genero ?? '');
-
-            if ($personInfo == null || $personInfo->error != null) {
-                return sendResponse(null, ['general' => 'Ha habido un error durante la consulta'], 422);
-            }
-            if ($personInfo->value['error'] != null) {
-                return sendResponse(null, ['general' => $personInfo->value['error']], 423);
-            }
-            // $user = User::where('email', $personInfo->value['informacion']['correoElectronico']['direccion'])->first();
-            $bool = isset($personInfo->value) && $personInfo->value && isset($personInfo->value['informacion']) && $personInfo->value['informacion'];
-            $origin = Origin::where('name', $request->origin)->first();
-
-            $log['origin_id'] = $origin->id;
-            if ($bool) {
-                $user_id = $personInfo->value["informacion"]["usuarioID"];;
-                if ($user_id == 0) {
-                    $log['message'] = 'No existe un usuario de Muni Express asociado a la identificación';
-                    $log['attributes'] = json_encode(['response' => $personInfo]);
-                    Log::create($log);
-                    return sendResponse(null,  $log['message'], 404);
-                }
-                $domicilio_electronico = Domicilio::where('user_id', $user_id)->first();
-                if (!$domicilio_electronico) {
-                    $log['message'] = 'El usuario no tiene domicilio electronico.';
-                    $log['user_id'] = $user_id;
-                    $log['attributes'] = json_encode(['user_id' => $user_id, 'documento' => $request->documento]);
-                    Log::create($log);
-                    return sendResponse(null,  $log['message'], 404);
-                }
-                /* Paso todas las validaciones */
-                $params = $request->only(['title', 'body']);
-                $params['origin_id'] = $origin->id;
-
-                $domicilio_notificacion = $this->createDomicilioNotificacion(
-                    $params,
-                    $domicilio_electronico->id,
-                    TipoDestinatario::where('name', 'destinatario')->first(),
-                    $request->documento
-                );
-
-                // envio de email
-                $fechaFormateada = formatearFecha($domicilio_notificacion->fecha_recibido);
-                $mensaje = "Usted ha sido notificado en su domicilio electrónico. Para poder ver dicha notificación deberá ingresar a <a href='https://weblogin.neuquencapital.gov.ar/#/login'>Muni Express</a><br><b>Fecha de notificación: </b> $fechaFormateada hs.";
-                $subject = 'Nueva notificación electrónica - Municipalidad de Neuquén';
-
-                sendEmail($domicilio_electronico->email, $subject, $mensaje);
-
-                foreach ($request->email_aviso_notificacion as $email) {
-                    sendEmail($email, 'Notificación Electrónica - Muni Express', 'Usted tiene una nueva notificacion en el Domicilio Electrónico');
-                }
-
-                $this->saveArchivos($request->file('files'), $domicilio_notificacion);
-
-                return sendResponse(new MensajeResource($domicilio_notificacion));
-            } else {
-                $log['message'] = 'Problema para identificar al objeto';
-                $log['attributes'] = json_encode(['response' => $personInfo, 'documento' => $request->documento]);
-                Log::create($log);
-                return sendResponse(null,  $log['message'], 404);
-            }
-        } catch (\Exception $e) {
-            $log['message'] = 'Error general';
-            $log['attributes'] = json_encode($e->getTrace());
-            Log::create($log);
-            return sendResponse(null,  $e->getMessage(), 404);
         }
     }
 

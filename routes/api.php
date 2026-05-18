@@ -20,13 +20,22 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
 
-    /** Domicilio Electrónico */
+    /** Domicilio Electrónico - Usuario */
     Route::post('user/domicilio-electronico/set', [DomicilioElectronicoController::class, 'set_domicilio']);
     Route::post('user/domicilio-electronico/enviar-notificacion', [DomicilioElectronicoController::class, 'enviar_notificacion']);
     Route::post('user/domicilio-electronico/has_new_message', [DomicilioElectronicoController::class, 'has_new_message']);
     Route::get('user/domicilio-electronico/notificaciones', [DomicilioElectronicoController::class, 'notificaciones']);
     Route::post("user/domicilio-electronico/set-view", [DomicilioElectronicoController::class, "set_view"]);
     Route::post("user/domicilio-electronico/set-archivado", [DomicilioElectronicoController::class, "set_archivado"]);
+
+    /** Domicilio Electrónico - Admin/Backoffice */
+    Route::get('admin/domicilio-electronico/pendientes', [DomicilioElectronicoController::class, 'getPendientes']);
+    Route::post('admin/domicilio-electronico/verificar', [DomicilioElectronicoController::class, 'verificarDomicilio']);
+    Route::get('admin/domicilio-electronico/notificaciones', [DomicilioElectronicoController::class, 'getNotificacionesAll']);
+    Route::get('admin/domicilio-electronico/domicilios', [DomicilioElectronicoController::class, 'getDomiciliosVerificados']);
+    Route::get('admin/domicilio-electronico/buscar-cuit/{cuit}', [DomicilioElectronicoController::class, 'buscarContribuyente']);
+    Route::get('admin/domicilio-electronico/origenes', [DomicilioElectronicoController::class, 'getOrigenes']);
+    Route::post('admin/domicilio-electronico/enviar', [DomicilioElectronicoController::class, 'enviarNotificacionAdmin']);
 
     Route::post('file', [TestController::class, 'file']);
 
@@ -43,6 +52,7 @@ Route::get('mp/success', [TributariaController::class, 'success']);
 
 Route::get('provincias', [ProvinciaController::class, 'index']);
 Route::post('tributaria', [TributariaController::class, 'index']);
+Route::match(['get', 'post'], 'tributaria/debug-xml', [TributariaController::class, 'debugXML']);
 
 Route::get('logs', [LogController::class, 'index']);
 Route::get('logs/{id}', [LogController::class, 'show']);

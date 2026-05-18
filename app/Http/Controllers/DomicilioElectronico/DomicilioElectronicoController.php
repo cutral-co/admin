@@ -891,4 +891,237 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
             return sendResponse(null, "No se encontró la notificación", 404);
         }
     }
+
+    // ============================================================
+    // ADMIN / BACKOFFICE ENDPOINTS
+    // ============================================================
+
+    /**
+     * Obtiene todos los domicilios electrónicos NO verificados (is_verified = 0).
+     * GET /api/admin/domicilio-electronico/pendientes
+     */
+    public function getPendientes()
+    {
+        try {
+            $domicilios = Domicilio::where('is_verified', 0)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->makeVisible('id')
+                ->makeHidden([
+                    'token',
+                    'updated_at',
+                    'mensajes',
+                    'has_notificaciones',
+                    'countNotificacionesSinVer',
+                ]);
+
+            return sendResponse($domicilios);
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /**
+     * Verifica un domicilio electrónico manualmente desde el backoffice.
+     * POST /api/admin/domicilio-electronico/verificar
+     * Body: { id: int }
+     */
+    public function verificarDomicilio(Request $request)
+    {
+        try {
+            $request->validate(['id' => 'required|integer|exists:de_domicilio,id']);
+
+            $domicilio = Domicilio::find($request->id);
+
+            if ($domicilio->is_verified) {
+                return sendResponse(null, 'El domicilio electrónico ya está verificado', 300);
+            }
+
+            $domicilio->is_verified = 1;
+            $domicilio->token = null;
+            $domicilio->save();
+
+            Log::create([
+                'domicilio_id' => $domicilio->id,
+                'message' => 'Domicilio electrónico verificado manualmente desde el backoffice',
+            ]);
+
+            return sendResponse($domicilio
+                ->makeVisible('id')
+                ->makeHidden([
+                    'token',
+                    'updated_at',
+                    'mensajes',
+                    'has_notificaciones',
+                    'countNotificacionesSinVer',
+                ]));
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /**
+     * Obtiene las últimas 500 notificaciones enviadas (admin).
+     * GET /api/admin/domicilio-electronico/notificaciones
+     */
+    public function getNotificacionesAll()
+    {
+        try {
+            $notificaciones = Notificacion::with(['origin', 'domicilio_notificacion.domicilio'])
+                ->orderBy('created_at', 'desc')
+                ->limit(500)
+                ->get()
+                ->map(function ($notif) {
+                    return [
+                        'id' => $notif->id,
+                        'origen' => $notif->origin ? $notif->origin->descripcion : 'Sin origen',
+                        'titulo' => $notif->title,
+                        'mensaje' => $notif->body,
+                        'leida' => $notif->domicilio_notificacion && $notif->domicilio_notificacion->fecha_visto ? true : false,
+                        'created_at' => $notif->created_at ? $notif->created_at->format('Y-m-d H:i') : null,
+                    ];
+                });
+
+            return sendResponse($notificaciones);
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /**
+     * Busca un contribuyente por CUIT/documento.
+     * GET /api/admin/domicilio-electronico/buscar-cuit/{cuit}
+     */
+    public function buscarContribuyente(string $cuit)
+    {
+        try {
+            $domicilio = Domicilio::where('documento', $cuit)->first();
+
+            if (!$domicilio) {
+                return sendResponse(null, 'No se encontró un domicilio electrónico para el CUIT ingresado', 404);
+            }
+
+            $domicilio->makeVisible('id')->makeHidden([
+                'token',
+                'updated_at',
+                'mensajes',
+                'has_notificaciones',
+                'countNotificacionesSinVer',
+            ]);
+
+            return sendResponse($domicilio);
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /**
+     * Obtiene todos los orígenes disponibles.
+     * GET /api/admin/domicilio-electronico/origenes
+     */
+    public function getOrigenes()
+    {
+        try {
+            $origenes = Origin::all()->makeHidden(['token']);
+            return sendResponse($origenes);
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /**
+     * Envía una notificación desde el backoffice a un contribuyente.
+     * POST /api/admin/domicilio-electronico/enviar
+     * Body: { title, body, origin, documento }
+     */
+    public function enviarNotificacionAdmin(Request $request)
+    {
+        try {
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'body' => 'required|string',
+                'origin' => 'required|string',
+                'documento' => 'required|string|size:11',
+            ]);
+
+            // Buscar el origen por nombre
+            $origin = Origin::where('name', $request->origin)->first();
+            if (!$origin) {
+                return sendResponse(null, 'El origen especificado no existe', 404);
+            }
+
+            // Buscar el domicilio por documento
+            $domicilio = Domicilio::where('documento', $request->documento)->first();
+            if (!$domicilio) {
+                return sendResponse(null, 'No se encontró un domicilio electrónico para el documento ingresado', 404);
+            }
+
+            if (!$domicilio->is_verified) {
+                return sendResponse(null, 'El domicilio electrónico del contribuyente no está verificado', 400);
+            }
+
+            $params = [
+                'title' => $request->title,
+                'body' => $request->body,
+                'origin_id' => $origin->id,
+                'data' => $request->data ?? null,
+            ];
+
+            $tipo_destinatario = TipoDestinatario::where('name', 'destinatario')->first();
+
+            $domicilio_notificacion = $this->createDomicilioNotificacion(
+                $params,
+                $domicilio->id,
+                $tipo_destinatario,
+                $domicilio->documento
+            );
+
+            Log::create([
+                'domicilio_id' => $domicilio->id,
+                'notificacion_id' => $domicilio_notificacion->notificacion_id,
+                'message' => 'Notificación enviada desde el backoffice',
+                'attributes' => json_encode([
+                    'title' => $request->title,
+                    'origin' => $request->origin,
+                    'enviado_por_admin' => true,
+                ]),
+            ]);
+
+            return sendResponse(new MensajeResource($domicilio_notificacion));
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /**
+     * Obtiene todos los domicilios electrónicos VERIFICADOS.
+     * GET /api/admin/domicilio-electronico/domicilios
+     */
+    public function getDomiciliosVerificados()
+    {
+        try {
+            $domicilios = Domicilio::where('is_verified', 1)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->makeVisible('id')
+                ->makeHidden([
+                    'token',
+                    'updated_at',
+                    'mensajes',
+                    'has_notificaciones',
+                    'countNotificacionesSinVer',
+                ]);
+
+            return sendResponse($domicilios);
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
 }

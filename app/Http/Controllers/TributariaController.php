@@ -28,6 +28,7 @@ class TributariaController extends Controller
                     /*  return $this->getXMLRequestEmitirCompPagoDeudaVenc($request); */
                     $response =  $client->__doRequest($this->getXMLRequestEmitirComp($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
                 } else {
+                    //return $this->getXMLRequest($request);
                     $response =  $client->__doRequest($this->getXMLRequest($request), $options['location'], 'urn:uSWConsultaTributariaIntf-ISWConsultaTributaria#SW_ConsultarDeuda', 1);
                 }
                 preg_match('/<return xsi:type="xsd:string">(.*?)<\/return>/s', $response, $matches);
@@ -145,6 +146,38 @@ class TributariaController extends Controller
         }
 
         return $xml->asXML();
+    }
+
+    /**
+     * Debug: devuelve el XML generado sin hacer la llamada SOAP.
+     * Útil para ver exactamente qué XML se enviaría al servicio tributario.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function debugXML(Request $request)
+    {
+        try {
+            if ($request->type === 'SW_EmitirCompPagoDeudaVenc' || $request->type === 'SW_EmitirCompPagoNoVenc') {
+                $xml = $this->getXMLRequestEmitirComp($request);
+            } else {
+                $xml = $this->getXMLRequest($request);
+            }
+
+            // Formatear el XML con indentación para legibilidad
+            $dom = new \DOMDocument('1.0');
+            $dom->preserveWhiteSpace = false;
+            $dom->formatOutput = true;
+            $dom->loadXML($xml);
+
+            $formattedXml = $dom->saveXML();
+
+            return response($formattedXml, 200, [
+                'Content-Type' => 'application/xml',
+            ]);
+        } catch (\Exception $e) {
+            return response("Error generando XML: " . $e->getMessage(), 500);
+        }
     }
 
     private function pagar_online($operacion)

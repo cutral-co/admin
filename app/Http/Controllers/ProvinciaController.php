@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Provincia;
+use App\Models\Common\Provincia;
 use Illuminate\Http\Request;
 
 class ProvinciaController extends Controller

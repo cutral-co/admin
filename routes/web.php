@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\User\SolicitudController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,3 +15,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', fn () => 'ERROR');
+
+Route::get('/verificar-correo', [SolicitudController::class, 'verificarCorreo']);
+Route::get('/correo-verificado', [SolicitudController::class, 'correoVerificado']);

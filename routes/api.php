@@ -10,10 +10,12 @@ use App\Http\Controllers\{
 };
 
 use App\Http\Controllers\DomicilioElectronico\DomicilioElectronicoController;
+use App\Http\Controllers\User\SolicitudController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login']);
-Route::post('register', [AuthController::class, 'register']);
+Route::post('register', [SolicitudController::class, 'store']);
+Route::get('register/token', [SolicitudController::class, 'get_by_token']);
 Route::post('activate_user', [AuthController::class, 'activate_user']);
 
 Route::group(['middleware' => ['jwt.verify']], function () {

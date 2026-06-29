@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\BarrioMunicipio;
+use App\Models\Common\BarrioMunicipio;
 use Illuminate\Http\Request;
 
 class BarrioController extends Controller

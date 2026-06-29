@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Common\{Provincia, BarrioMunicipio};
+
 use Illuminate\Database\Eloquent\Model;
 
 class Person extends Model

@@ -18,11 +18,18 @@ Route::post('register', [SolicitudController::class, 'store']);
 Route::get('register/token', [SolicitudController::class, 'get_by_token']);
 Route::post('activate_user', [AuthController::class, 'activate_user']);
 
+Route::get('/test/correo', [SolicitudController::class, 'store']);
+
 Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
 
     /** Domicilio Electrónico - Usuario */
+    Route::post('user/solicitud/pendientes', [SolicitudController::class, 'pendientes']);
+    Route::post('user/solicitud/aprobadas', [SolicitudController::class, 'aprobadas']);
+    Route::post('user/solicitud/rechazadas', [SolicitudController::class, 'rechazadas']);
+    Route::post('user/solicitud/cambiar-estado', [SolicitudController::class, 'cambiarEstado']);
+
     Route::post('user/domicilio-electronico/set', [DomicilioElectronicoController::class, 'set_domicilio']);
     Route::post('user/domicilio-electronico/enviar-notificacion', [DomicilioElectronicoController::class, 'enviar_notificacion']);
     Route::post('user/domicilio-electronico/has_new_message', [DomicilioElectronicoController::class, 'has_new_message']);

@@ -27,7 +27,7 @@ class Solicitud extends Model
         /* Cuando selecciono otra localidad, barrio_id deberia ser null */
         'provincia_id',
         'municipio',
-        'barrio',
+        'otro_barrio',
 
         "calle",
         "altura",
@@ -49,7 +49,8 @@ class Solicitud extends Model
         "estado_id",
         "barrio_id",
     ];
-    public function bar()
+
+    public function barrio()
     {
         return $this->belongsTo(BarrioMunicipio::class, 'barrio_id');
     }
@@ -58,8 +59,6 @@ class Solicitud extends Model
     {
         return $this->belongsTo(Provincia::class);
     }
-
-
 
     public function estado()
     {

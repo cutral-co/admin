@@ -170,4 +170,16 @@ class SolicitudController extends Controller
         }
         return redirect()->away('http://www.cutralco.gob.ar/');
     }
+
+    public function test_correo()
+    {
+        try {
+            $link = env('APP_URL') . "verificar-correo?token=6a42d8c0c550b";
+
+            Mail::to('gon.pineiro@gmail.com')->send(new EmailConfirmacion($link));
+            return sendResponse('asdad');
+        } catch (\Throwable $th) {
+            return sendResponse(null, $th->getMessage());
+        }
+    }
 }

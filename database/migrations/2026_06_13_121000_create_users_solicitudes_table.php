@@ -22,7 +22,7 @@ class CreateUsersSolicitudesTable extends Migration
             $table->string('phone');
             $table->unsignedBigInteger('barrio_id');
             $table->string('municipio')->nullable();
-            $table->string('barrio')->nullable();
+            $table->string('otro_barrio')->nullable();
             $table->string('calle');
             $table->string('altura');
             $table->string('manzana')->nullable();

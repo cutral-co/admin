@@ -3,6 +3,7 @@
 use App\Http\Controllers\{
     AuthController,
     BarrioController,
+    Legal\LegalContentController,
     LogController,
     ProvinciaController,
     TestController,
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('login', [AuthController::class, 'login']);
 Route::post('register', [SolicitudController::class, 'store']);
 Route::get('register/token', [SolicitudController::class, 'get_by_token']);
+Route::get('legal-content/{key}', [LegalContentController::class, 'show'])->where('key', '[A-Za-z0-9\.\-]+');
 Route::post('activate_user', [AuthController::class, 'activate_user']);
 
 Route::get('/test/correo', [SolicitudController::class, 'store']);

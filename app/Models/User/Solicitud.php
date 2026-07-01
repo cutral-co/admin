@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
 
 use App\Models\Common\{BarrioMunicipio, Provincia};
+use App\Models\Concerns\HasDomicilioFisico;
 use App\Models\DomicilioElectronico\Domicilio;
 use App\Models\Person;
 use App\Models\Table\EstadoUserSolicitud;
@@ -15,6 +16,7 @@ use App\Models\User;
 class Solicitud extends Model
 {
     use HasFactory;
+    use HasDomicilioFisico;
 
     protected $table = 'users_solicitudes';
 

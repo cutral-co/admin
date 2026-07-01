@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\Controller;
 
+use App\Http\Resources\User\SolicitudDetalleResource;
 use App\Http\Resources\User\SolicitudResource;
 
 use App\Mail\UerSolicitud\{EmailAprobacion, EmailConfirmacion, EmailPostConfirmacion, EmailRechazo};
@@ -56,6 +57,17 @@ class SolicitudController extends Controller
         $solicitudes = $query->get();
 
         return sendResponse(SolicitudResource::collection($solicitudes));
+    }
+
+    public function getSolicitud(int $id_solicitud)
+    {
+        $solicitud = Solicitud::with(['barrio.provincia', 'provincia', 'estado'])->find($id_solicitud);
+
+        if (!$solicitud) {
+            return sendResponse(null, 'No se encontro la solicitud', 404);
+        }
+
+        return sendResponse(new SolicitudDetalleResource($solicitud));
     }
 
     public function cambiarEstado(Request $request)

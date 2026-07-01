@@ -23,7 +23,6 @@ Route::post('activate_user', [AuthController::class, 'activate_user']);
 
 Route::get('/test/correo', [SolicitudController::class, 'store']);
 
-Route::get('user/solicitud/por-estado', [SolicitudController::class, 'porEstado']);
 Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
@@ -31,6 +30,8 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     /** Domicilio Electrónico - Usuario */
 
 
+    Route::get('user/solicitud/por-estado', [SolicitudController::class, 'porEstado']);
+    Route::get('user/solicitud/{id_solicitud}', [SolicitudController::class, 'getSolicitud']);
     Route::post('user/solicitud/cambiar-estado', [SolicitudController::class, 'cambiarEstado']);
 
     Route::post('user/domicilio-electronico/set', [DomicilioElectronicoController::class, 'set_domicilio']);

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('login', [AuthController::class, 'login']);
 Route::post('register', [SolicitudController::class, 'store']);
 Route::get('register/token', [SolicitudController::class, 'get_by_token']);
+Route::get('test/user-solicitud-email/{type}', [SolicitudController::class, 'testCorreoTemplate']);
 Route::get('legal-content/{key}', [LegalContentController::class, 'show'])->where('key', '[A-Za-z0-9\.\-]+');
 Route::post('activate_user', [AuthController::class, 'activate_user']);
 

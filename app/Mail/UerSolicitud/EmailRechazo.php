@@ -2,12 +2,12 @@
 
 namespace App\Mail\UerSolicitud;
 
+use App\Contracts\LogsEmailPayload;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class EmailRechazo extends Mailable
+class EmailRechazo extends Mailable implements LogsEmailPayload
 {
     use Queueable, SerializesModels;
 
@@ -29,5 +29,26 @@ class EmailRechazo extends Mailable
     public function build()
     {
         return $this->view('emails.user-solicitud.rechazo');
+    }
+
+    public function getEmailTemplateKey(): string
+    {
+        return 'user-registration.rechazo';
+    }
+
+    public function getEmailLogPayload(): array
+    {
+        return [
+            'action' => 'registration-rejected',
+            'flow' => 'user-registration',
+        ];
+    }
+
+    public function getEmailLogMeta(): array
+    {
+        return [
+            'module' => 'user-registration',
+            'template_group' => 'user-solicitud',
+        ];
     }
 }

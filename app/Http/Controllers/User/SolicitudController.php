@@ -3,19 +3,21 @@
 namespace App\Http\Controllers\User;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\Controller;
 
 use App\Http\Resources\User\SolicitudResource;
 
-use App\Mail\UerSolicitud\{EmailAprobacion, EmailConfirmacion, EmailRechazo};
+use App\Mail\UerSolicitud\{EmailAprobacion, EmailConfirmacion, EmailPostConfirmacion, EmailRechazo};
 use App\Models\Table\EstadoUserSolicitud;
 use App\Models\User\Solicitud;
+use App\Services\Email\EmailLogService;
 
 class SolicitudController extends Controller
 {
+    public function __construct(private readonly EmailLogService $emailLogService) {}
+
     public function index(Request $request)
     {
         $solicitudes = Solicitud::all();
@@ -62,12 +64,24 @@ class SolicitudController extends Controller
 
         /* confirmada */
         if ($solicitud->estado_id == 2) {
-            Mail::to($solicitud->email)->send(new EmailAprobacion());
+            $this->emailLogService->send(
+                $solicitud->email,
+                new EmailAprobacion(),
+                Solicitud::class,
+                $solicitud->id,
+                auth()->user()?->id,
+            );
         }
 
         /* rechazada */
         if ($solicitud->estado_id == 3) {
-            Mail::to($solicitud->email)->send(new EmailRechazo());
+            $this->emailLogService->send(
+                $solicitud->email,
+                new EmailRechazo(),
+                Solicitud::class,
+                $solicitud->id,
+                auth()->user()?->id,
+            );
         }
         return sendResponse(new SolicitudResource($solicitud));
     }
@@ -95,7 +109,13 @@ class SolicitudController extends Controller
         $link = env('APP_URL') . "verificar-correo?token=$solicitud->token_verificacion";
 
         try {
-            Mail::to($solicitud->email)->send(new EmailConfirmacion($link));
+            $this->emailLogService->send(
+                $solicitud->email,
+                new EmailConfirmacion($link),
+                Solicitud::class,
+                $solicitud->id,
+                auth()->user()?->id,
+            );
             $solicitud->ultimo_envio_email = \Carbon\Carbon::now();
             $solicitud->save();
         } catch (\Throwable $th) {
@@ -164,7 +184,13 @@ class SolicitudController extends Controller
 
         foreach ($solicitudd as $solicitud) {
             $link = env('APP_URL') . "verificar-correo?token=$solicitud->token_verificacion";
-            Mail::to($solicitud->email)->send(new EmailConfirmacion($link));
+            $this->emailLogService->send(
+                $solicitud->email,
+                new EmailConfirmacion($link),
+                Solicitud::class,
+                $solicitud->id,
+                null,
+            );
             $solicitud->ultimo_envio_email = \Carbon\Carbon::now();
             $solicitud->save();
         }
@@ -176,10 +202,54 @@ class SolicitudController extends Controller
         try {
             $link = env('APP_URL') . "verificar-correo?token=6a42d8c0c550b";
 
-            Mail::to('gon.pineiro@gmail.com')->send(new EmailConfirmacion($link));
+            $this->emailLogService->send(
+                'gon.pineiro@gmail.com',
+                new EmailConfirmacion($link),
+            );
             return sendResponse('asdad');
         } catch (\Throwable $th) {
             return sendResponse(null, $th->getMessage());
+        }
+    }
+
+    public function testCorreoTemplate(string $type)
+    {
+        if (!env('APP_DEBUG')) {
+            return sendResponse(null, 'Endpoint disponible solo en entornos de debug', 403);
+        }
+
+        $link = env('APP_URL') . "verificar-correo?token=test-user-solicitud";
+
+        try {
+            $mailable = match ($type) {
+                'confirmacion' => new EmailConfirmacion($link),
+                'aprobacion' => new EmailAprobacion(),
+                'rechazo' => new EmailRechazo(),
+                'post-confirmacion' => new EmailPostConfirmacion(),
+                default => null,
+            };
+
+            if (!$mailable) {
+                return sendResponse(
+                    null,
+                    'Tipo de correo invalido. Use: confirmacion, aprobacion, rechazo, post-confirmacion',
+                    422
+                );
+            }
+
+            $emailLog = $this->emailLogService->send(
+                'gon.pineiro@gmail.com',
+                $mailable,
+            );
+
+            return sendResponse([
+                'sent_to' => 'gon.pineiro@gmail.com',
+                'type' => $type,
+                'email_log_id' => $emailLog->id,
+                'email_log_uuid' => $emailLog->uuid,
+            ]);
+        } catch (\Throwable $th) {
+            return sendResponse(null, $th->getMessage(), 500);
         }
     }
 }

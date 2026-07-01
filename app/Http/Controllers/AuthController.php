@@ -155,7 +155,7 @@ class AuthController extends Controller
             if ($body['localidad'] === "SI") {
                 $body['provincia_id'] = null;
                 $body['municipio'] = null;
-                $body['barrio'] = null;
+                $body['otro_barrio'] = null;
             } else {
                 $body['barrio_id'] = null;
             }

@@ -2,6 +2,6 @@
     'tone' => 'success',
     'eyebrow' => 'Registro de usuario',
     'title' => 'Solicitud aprobada',
-    'message' => 'Su solicitud de registro fue aprobada correctamente.',
-    'supportingText' => 'En caso de corresponder, recibira nuevas instrucciones por los canales informados en el formulario.',
+    'message' => "Su solicitud de registro fue aprobada correctamente.\n\nYa puede ingresar al sistema con las siguientes credenciales:\nCUIT: {$cuit}\Contraseña: {$password}",
+    'supportingText' => 'Le recomendamos cambiar su contraseña despues del primer ingreso.',
 ])

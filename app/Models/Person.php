@@ -32,7 +32,7 @@ class Person extends Model
         /* Direccion Macro */
         'barrio_id',
         'municipio',
-        'barrio',
+        'otro_barrio',
         'municipio',
         'provincia_id',
     ];
@@ -46,7 +46,7 @@ class Person extends Model
         'depto',
 
         'barrio_id',
-        'barrio',
+        'otro_barrio',
         'municipio',
         'provincia_id',
 
@@ -80,7 +80,7 @@ class Person extends Model
 
     public function getDireccionAttribute()
     {
-        if (!$this->call && !$this->altura) {
+        if (!$this->calle && !$this->altura) {
             return null;
         }
 
@@ -93,9 +93,26 @@ class Person extends Model
             'depto' => $this->depto,
 
             'municipio' => $this->municipio,
-            'barrio' => $this->barrio_id ? $this->barrio_municipal : $this->barrio,
-            'provincia' => $this->provincia ? $this->provincia : ($this->barrio_municipal ?  $this->barrio_municipal->provincia : null),
-            'is_cutral' => (bool)$this->barrio_id
+            'barrio' => $this->barrio_id ? $this->barrio_municipal : $this->otro_barrio,
+            'provincia' => $this->provincia ? $this->provincia : ($this->barrio_municipal ? $this->barrio_municipal->provincia : null),
+            'is_cutral' => (bool) $this->barrio_id,
         ];
+    }
+
+    public function stringDatosDomicilio(): string
+    {
+        $parts = array_filter([
+            $this->calle,
+            $this->altura ? 'Nro. ' . $this->altura : null,
+            $this->manzana ? 'Mz. ' . $this->manzana : null,
+            $this->lote ? 'Lote ' . $this->lote : null,
+            $this->piso ? 'Piso ' . $this->piso : null,
+            $this->depto ? 'Depto ' . $this->depto : null,
+            $this->barrio_id ? $this->barrio_municipal?->name : $this->otro_barrio,
+            $this->municipio,
+            $this->provincia?->name ?? $this->barrio_municipal?->provincia?->name,
+        ]);
+
+        return implode(', ', $parts);
     }
 }

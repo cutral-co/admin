@@ -11,13 +11,10 @@ class EmailAprobacion extends Mailable implements LogsEmailPayload
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
+    public function __construct(
+        public string $cuit,
+        public string $password,
+    ) {
         $this->subject('Adherido a la factura digital');
     }
 
@@ -28,7 +25,10 @@ class EmailAprobacion extends Mailable implements LogsEmailPayload
      */
     public function build()
     {
-        return $this->view('emails.user-solicitud.adherido');
+        return $this->view('emails.user-solicitud.adherido', [
+            'cuit' => $this->cuit,
+            'password' => $this->password,
+        ]);
     }
 
     public function getEmailTemplateKey(): string
@@ -41,11 +41,9 @@ class EmailAprobacion extends Mailable implements LogsEmailPayload
         return [
             'action' => 'registration-approved',
             'flow' => 'user-registration',
-            'recipient' => [
-                'email' => null,
-                'name' => null,
-                'lastname' => null,
-                'cuit' => null,
+            'credentials' => [
+                'cuit' => $this->cuit,
+                'password' => $this->password,
             ],
         ];
     }

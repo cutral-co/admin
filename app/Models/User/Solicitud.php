@@ -72,11 +72,23 @@ class Solicitud extends Model
 
     public static function getCountPendientes()
     {
-        return self::whereNotNull('fecha_verificado')->where('estado_id', 1)->count();
+        $estadoNuevo = EstadoUserSolicitud::get('nuevo');
+
+        if (!$estadoNuevo) {
+            return 0;
+        }
+
+        return self::whereNotNull('fecha_verificado')->where('estado_id', $estadoNuevo->id)->count();
     }
 
     public static function getCountAprobadas()
     {
-        return self::where('estado_id', 2)->count();
+        $estadoAprobado = EstadoUserSolicitud::get('aprobado');
+
+        if (!$estadoAprobado) {
+            return 0;
+        }
+
+        return self::where('estado_id', $estadoAprobado->id)->count();
     }
 }

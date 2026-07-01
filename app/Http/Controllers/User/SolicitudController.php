@@ -38,28 +38,27 @@ class SolicitudController extends Controller
         return sendResponse(null, 'No se encontro la solicitud', 404);
     }
 
-    public function pendientes()
+    public function porEstado(Request $request)
     {
-        $solicitudes = Solicitud::with(['barrio', 'estado'])
-            ->whereNotNull('fecha_verificado')
-            ->where('estado_id', 1)
-            ->get();
-        return sendResponse(SolicitudResource::collection($solicitudes));
-    }
+        $estadoValue = $request->query('estado');
+        if (!$estadoValue) {
+            return sendResponse(null, 'El parametro estado es obligatorio', 422);
+        }
 
-    public function aprobadas()
-    {
-        $solicitudes = Solicitud::with(['barrio', 'estado'])
-            ->where('estado_id', 2)
-            ->get();
-        return sendResponse(SolicitudResource::collection($solicitudes));
-    }
+        $estado = EstadoUserSolicitud::get($estadoValue);
+        if (!$estado) {
+            return sendResponse(null, 'Estado invalido. Use: nuevo, aprobado, rechazado', 422);
+        }
 
-    public function rechazadas()
-    {
-        $solicitudes = Solicitud::with(['barrio', 'estado'])
-            ->where('estado_id', 3)
-            ->get();
+        $query = Solicitud::with(['barrio', 'estado'])
+            ->where('estado_id', $estado->id);
+
+        if ($estado->value === 'nuevo') {
+            $query->whereNotNull('fecha_verificado');
+        }
+
+        $solicitudes = $query->get();
+
         return sendResponse(SolicitudResource::collection($solicitudes));
     }
 
@@ -170,15 +169,20 @@ class SolicitudController extends Controller
 
         $cuit = $request->cuit;
 
-        $estado_aprobado = EstadoUserSolicitud::where('value', 'aprobado')->first();
-        $solicitud = Solicitud::where('cuit', $cuit)->where('estado_id', $estado_aprobado->id)->first();
-        if ($solicitud) {
-            return sendResponse(null, "Número de CUIT/CUIL ya se encuentra adherido a la factura digital");
+        $estadoAprobado = EstadoUserSolicitud::get('aprobado');
+        if ($estadoAprobado && Solicitud::where('cuit', $cuit)->where('estado_id', $estadoAprobado->id)->exists()) {
+            return sendResponse(null, 'Numero de CUIT/CUIL ya se encuentra adherido a la factura digital');
         }
 
-        $solicitud = Solicitud::where('cuit', $cuit)->whereNotNull('fecha_verificado')->where('estado_id', 1)->first();
-        if ($solicitud) {
-            return sendResponse(null, "Número de CUIT/CUIL ya tiene un correo electrónico activado");
+        $estadoNuevo = EstadoUserSolicitud::get('nuevo');
+        if (
+            $estadoNuevo
+            && Solicitud::where('cuit', $cuit)
+                ->whereNotNull('fecha_verificado')
+                ->where('estado_id', $estadoNuevo->id)
+                ->exists()
+        ) {
+            return sendResponse(null, 'Numero de CUIT/CUIL ya tiene un correo electronico activado');
         }
 
         $body['token_verificacion'] = uniqid();
@@ -227,18 +231,26 @@ class SolicitudController extends Controller
 
     public function correoVerificado(Request $request)
     {
-
-
         return view('emailConfirmation');
     }
 
     public function monitor()
     {
+        $estadoNuevo = EstadoUserSolicitud::get('nuevo');
+        $estadoAprobado = EstadoUserSolicitud::get('aprobado');
+        $estadoRechazado = EstadoUserSolicitud::get('rechazado');
+
         $monitor = [
             'total' => Solicitud::all()->count(),
-            'pendientes' => Solicitud::whereNotNull('fecha_verificado')->where('estado_id', 1)->count(),
-            'aprobadas' => Solicitud::where('estado_id', 2)->count(),
-            'rechazadas' => Solicitud::where('estado_id', 3)->count(),
+            'pendientes' => $estadoNuevo
+                ? Solicitud::whereNotNull('fecha_verificado')->where('estado_id', $estadoNuevo->id)->count()
+                : 0,
+            'aprobadas' => $estadoAprobado
+                ? Solicitud::where('estado_id', $estadoAprobado->id)->count()
+                : 0,
+            'rechazadas' => $estadoRechazado
+                ? Solicitud::where('estado_id', $estadoRechazado->id)->count()
+                : 0,
             'sin_verificar' => Solicitud::whereNull('fecha_verificado')->count(),
         ];
 

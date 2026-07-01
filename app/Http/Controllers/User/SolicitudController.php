@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\User;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\Controller;
@@ -11,11 +10,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\User\SolicitudResource;
 
 use App\Mail\UerSolicitud\{EmailAprobacion, EmailConfirmacion, EmailPostConfirmacion, EmailRechazo};
-use App\Models\DomicilioElectronico\Domicilio;
-use App\Models\Person;
 use App\Models\Table\EstadoUserSolicitud;
 use App\Models\User\Solicitud;
-use App\Models\User;
 use App\Services\Email\EmailLogService;
 
 class SolicitudController extends Controller
@@ -68,78 +64,45 @@ class SolicitudController extends Controller
             DB::beginTransaction();
 
             $solicitud = Solicitud::find($request->id);
-            if ($solicitud->estado_id == 2 || $solicitud->estado_id == 3) {
+            if (!$solicitud) {
                 DB::rollBack();
-                return sendResponse(null, 'No se puede cambiar el estado de esta solicitud');
+                return sendResponse(null, 'No se encontro la solicitud', 404);
             }
 
-            $solicitud->estado_id = $request->estado_id;
-            $solicitud->save();
+            $estadoDestino = EstadoUserSolicitud::find($request->estado_id);
+            if (!$estadoDestino) {
+                DB::rollBack();
+                return sendResponse(null, 'Estado invalido', 422);
+            }
 
-            if ($solicitud->estado_id == 2) {
-                $plainPassword = $this->generateSecurePassword();
+            $mailData = null;
 
-                $person = Person::updateOrCreate(
-                    ['cuit' => $solicitud->cuit],
-                    [
-                        'name' => $solicitud->name,
-                        'lastname' => $solicitud->lastname,
-                        'email' => $solicitud->email,
-                        'phone' => $solicitud->phone,
-                        'calle' => $solicitud->calle,
-                        'altura' => $solicitud->altura,
-                        'manzana' => $solicitud->manzana,
-                        'lote' => $solicitud->lote,
-                        'piso' => $solicitud->piso,
-                        'depto' => $solicitud->depto,
-                        'barrio_id' => $solicitud->barrio_id,
-                        'municipio' => $solicitud->municipio,
-                        'otro_barrio' => $solicitud->otro_barrio,
-                        'provincia_id' => $solicitud->provincia_id,
-                    ],
-                );
+            if ($estadoDestino->value === 'aprobado') {
+                $mailData = $solicitud->aprobarSolicitud();
+            }
 
-                $user = User::updateOrCreate(
-                    ['cuit' => $person->cuit],
-                    [
-                        'password' => Hash::make($plainPassword),
-                        'is_verified' => true,
-                        'person_id' => $person->id,
-                    ],
-                );
+            if ($estadoDestino->value === 'rechazado') {
+                $solicitud->rechazarSolicitud();
+            }
 
-                $domicilio = Domicilio::updateOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'email' => $person->email,
-                        'phone' => $person->phone,
-                        'domicilio_real' => $person->stringDatosDomicilio(),
-                        'nombre' => trim($person->name . ' ' . $person->lastname),
-                        'documento' => $person->cuit,
-                        'is_verified' => true,
-                        'token' => null,
-                    ],
-                );
+            if (!in_array($estadoDestino->value, ['aprobado', 'rechazado'], true)) {
+                DB::rollBack();
+                return sendResponse(null, 'Solo se permite aprobar o rechazar solicitudes', 422);
+            }
 
-                $user->de_id = $domicilio->id;
-                $user->save();
+            DB::commit();
 
-                DB::commit();
-
+            if ($estadoDestino->value === 'aprobado' && $mailData) {
                 $this->emailLogService->send(
                     $solicitud->email,
-                    new EmailAprobacion($user->cuit, $plainPassword),
+                    new EmailAprobacion($mailData['user']->cuit, $mailData['plainPassword']),
                     Solicitud::class,
                     $solicitud->id,
                     auth()->user()?->id,
                 );
-
-                return sendResponse(new SolicitudResource($solicitud->fresh(['barrio', 'estado'])));
             }
 
-            if ($solicitud->estado_id == 3) {
-                DB::commit();
-
+            if ($estadoDestino->value === 'rechazado') {
                 $this->emailLogService->send(
                     $solicitud->email,
                     new EmailRechazo(),
@@ -147,11 +110,7 @@ class SolicitudController extends Controller
                     $solicitud->id,
                     auth()->user()?->id,
                 );
-
-                return sendResponse(new SolicitudResource($solicitud->fresh(['barrio', 'estado'])));
             }
-
-            DB::commit();
 
             return sendResponse(new SolicitudResource($solicitud->fresh(['barrio', 'estado'])));
         } catch (\Throwable $th) {
@@ -175,18 +134,18 @@ class SolicitudController extends Controller
         }
 
         $estadoNuevo = EstadoUserSolicitud::get('nuevo');
-        if (
-            $estadoNuevo
-            && Solicitud::where('cuit', $cuit)
-                ->whereNotNull('fecha_verificado')
-                ->where('estado_id', $estadoNuevo->id)
-                ->exists()
-        ) {
+        $existeVerificado = Solicitud::where('cuit', $cuit)->whereNotNull('fecha_verificado')->where('estado_id', $estadoNuevo->id)->exists();
+        if ($estadoNuevo && $existeVerificado) {
             return sendResponse(null, 'Numero de CUIT/CUIL ya tiene un correo electronico activado');
         }
 
         $body['token_verificacion'] = uniqid();
         $solicitud = Solicitud::create($body);
+
+        if ($solicitud->barrio) {
+            $solicitud->provincia_id = $solicitud->barrio->provincia_id;
+            $solicitud->save();
+        }
 
         $link = env('APP_URL') . "verificar-correo?token=$solicitud->token_verificacion";
 
@@ -342,17 +301,5 @@ class SolicitudController extends Controller
         } catch (\Throwable $th) {
             return sendResponse(null, $th->getMessage(), 500);
         }
-    }
-
-    private function generateSecurePassword(int $length = 6): string
-    {
-        $characters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-        $password = '';
-
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $characters[random_int(0, strlen($characters) - 1)];
-        }
-
-        return $password;
     }
 }

@@ -23,6 +23,7 @@ class CreateUsersSolicitudesTable extends Migration
             $table->unsignedBigInteger('barrio_id');
             $table->string('municipio')->nullable();
             $table->string('otro_barrio')->nullable();
+            $table->unsignedBigInteger('provincia_id')->nullable();
             $table->string('calle');
             $table->string('altura');
             $table->string('manzana')->nullable();
@@ -38,6 +39,7 @@ class CreateUsersSolicitudesTable extends Migration
 
             /* relaciones */
             $table->foreign('barrio_id')->references('id')->on('barrios_municipio');
+            $table->foreign('provincia_id')->references('id')->on('provincias');
             $table->foreign('estado_id')->references('id')->on('tables');
         });
     }

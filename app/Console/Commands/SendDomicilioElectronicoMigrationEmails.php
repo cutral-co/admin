@@ -29,6 +29,7 @@ class SendDomicilioElectronicoMigrationEmails extends Command
     ];
 
     protected $signature = 'users:send-domicilio-electronico-migration
+        {--cuit= : Limita el proceso a un CUIT especÃ­fico}
         {--terms-url= : URL pública de términos y condiciones del domicilio electrónico}
         {--override-email= : Reemplaza el destinatario real por un correo de prueba}
         {--chunk=100 : Cantidad de usuarios por lote}
@@ -51,6 +52,7 @@ class SendDomicilioElectronicoMigrationEmails extends Command
         $chunkSize = max(1, (int) $this->option('chunk'));
         $limit = $this->option('limit') !== null ? max(0, (int) $this->option('limit')) : null;
         $dryRun = (bool) $this->option('dry-run');
+        $cuit = $this->resolveCuit();
         $exceptionCuits = self::EXCEPTION_CUITS;
         $overrideEmail = $this->resolveOverrideEmail();
 
@@ -62,6 +64,10 @@ class SendDomicilioElectronicoMigrationEmails extends Command
                 $query->whereNotNull('email')
                     ->where('email', '<>', '');
             });
+
+        if ($cuit) {
+            $baseQuery->where('cuit', $cuit);
+        }
 
         if (!empty($exceptionCuits)) {
             $baseQuery->whereNotIn('cuit', $exceptionCuits);
@@ -78,6 +84,9 @@ class SendDomicilioElectronicoMigrationEmails extends Command
         $this->line("Usuarios elegibles: {$eligibleCount}");
         $this->line("Ya enviados: {$alreadySentCount}");
         $this->line("Pendientes: {$pendingCount}");
+        if ($cuit) {
+            $this->line("Filtro por CUIT: {$cuit}");
+        }
         $this->line('CUITs excluidos: ' . (empty($exceptionCuits) ? 'ninguno' : implode(', ', $exceptionCuits)));
         if ($overrideEmail) {
             $this->warn("Modo prueba activo. Todos los correos se enviarán a {$overrideEmail}.");
@@ -224,6 +233,13 @@ class SendDomicilioElectronicoMigrationEmails extends Command
         $overrideEmail = trim((string) $this->option('override-email'));
 
         return $overrideEmail !== '' ? $overrideEmail : null;
+    }
+
+    private function resolveCuit(): ?string
+    {
+        $cuit = trim((string) $this->option('cuit'));
+
+        return $cuit !== '' ? $cuit : null;
     }
 
     private function sentUserIdsQuery()

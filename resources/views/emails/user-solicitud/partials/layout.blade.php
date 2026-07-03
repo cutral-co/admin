@@ -39,6 +39,32 @@
                                 {!! nl2br(e($message)) !!}
                             </div>
 
+                            @if (!empty($sections) && is_array($sections))
+                                @foreach ($sections as $section)
+                                    <div style="margin-bottom: 20px; padding: 18px; border: 1px solid #e8ebef; border-radius: 12px; background-color: #ffffff;">
+                                        @if (!empty($section['title']))
+                                            <h2 style="margin: 0 0 10px; font-size: 18px; line-height: 1.4; color: #24303f;">
+                                                {{ $section['title'] }}
+                                            </h2>
+                                        @endif
+
+                                        @if (!empty($section['body']))
+                                            <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #4d5a69;">
+                                                {!! nl2br(e($section['body'])) !!}
+                                            </p>
+                                        @endif
+
+                                        @if (!empty($section['linkLabel']) && !empty($section['linkUrl']))
+                                            <p style="margin: 14px 0 0;">
+                                                <a href="{{ $section['linkUrl'] }}" style="color: {{ $colors['accent'] }}; font-weight: 700; text-decoration: none;">
+                                                    {{ $section['linkLabel'] }}
+                                                </a>
+                                            </p>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @endif
+
                             @if (!empty($buttonLabel) && !empty($buttonUrl))
                                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 24px;">
                                     <tr>

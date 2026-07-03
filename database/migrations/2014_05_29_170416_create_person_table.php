@@ -33,7 +33,7 @@ return new class extends Migration
             /* Direccion Macro */
             $table->unsignedBigInteger('barrio_id')->nullable();
             $table->string('municipio')->nullable();
-            $table->string('barrio')->nullable();
+            $table->string('otro_barrio')->nullable();
             $table->unsignedBigInteger('provincia_id')->nullable();
 
             /* Relaciones */

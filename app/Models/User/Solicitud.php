@@ -12,6 +12,7 @@ use App\Models\DomicilioElectronico\Domicilio;
 use App\Models\Person;
 use App\Models\Table\EstadoUserSolicitud;
 use App\Models\User;
+use App\Services\Auth\PasswordGenerator;
 
 class Solicitud extends Model
 {
@@ -83,7 +84,7 @@ class Solicitud extends Model
         $this->estado_id = $estadoAprobado->id;
         $this->save();
 
-        $plainPassword = $this->generateSecurePassword();
+        $plainPassword = app(PasswordGenerator::class)->generate();
 
         $person = Person::updateOrCreate(
             ['cuit' => $this->cuit],
@@ -187,17 +188,5 @@ class Solicitud extends Model
         ) {
             throw new \RuntimeException('No se puede cambiar el estado de esta solicitud');
         }
-    }
-
-    private function generateSecurePassword(int $length = 6): string
-    {
-        $characters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-        $password = '';
-
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $characters[random_int(0, strlen($characters) - 1)];
-        }
-
-        return $password;
     }
 }

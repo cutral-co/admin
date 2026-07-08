@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Common\{BarrioMunicipio, Provincia};
 use App\Models\Concerns\HasDomicilioFisico;
 use App\Models\DomicilioElectronico\Domicilio;
+use App\Models\File;
 use App\Models\Person;
 use App\Models\Table\EstadoUserSolicitud;
 use App\Models\User;
@@ -70,6 +71,11 @@ class Solicitud extends Model
     public function estado()
     {
         return $this->belongsTo(EstadoUserSolicitud::class, 'estado_id', 'id');
+    }
+
+    public function files()
+    {
+        return $this->morphMany(File::class, 'fileable');
     }
 
     public function aprobarSolicitud(): array

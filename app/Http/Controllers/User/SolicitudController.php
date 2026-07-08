@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Http\Requests\User\StoreSolicitudRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
 
 use App\Http\Controllers\Controller;
 
@@ -61,7 +63,7 @@ class SolicitudController extends Controller
 
     public function getSolicitud(int $id_solicitud)
     {
-        $solicitud = Solicitud::with(['barrio.provincia', 'provincia', 'estado'])->find($id_solicitud);
+        $solicitud = Solicitud::with(['barrio.provincia', 'provincia', 'estado', 'files'])->find($id_solicitud);
 
         if (!$solicitud) {
             return sendResponse(null, 'No se encontro la solicitud', 404);
@@ -134,9 +136,9 @@ class SolicitudController extends Controller
         }
     }
 
-    public function store(Request $request)
+    public function store(StoreSolicitudRequest $request)
     {
-        $body = $request->all();
+        $body = $request->validated();
 
         $cuit = $request->cuit;
 
@@ -151,12 +153,30 @@ class SolicitudController extends Controller
             return sendResponse(null, 'Numero de CUIT/CUIL ya tiene un correo electronico activado');
         }
 
-        $body['token_verificacion'] = uniqid();
-        $solicitud = Solicitud::create($body);
+        try {
+            DB::beginTransaction();
 
-        if ($solicitud->barrio) {
-            $solicitud->provincia_id = $solicitud->barrio->provincia_id;
-            $solicitud->save();
+            $body['token_verificacion'] = uniqid();
+            unset($body['document_front'], $body['document_back'], $body['localidad']);
+
+            $solicitud = Solicitud::create($body);
+
+            if ($solicitud->barrio) {
+                $solicitud->provincia_id = $solicitud->barrio->provincia_id;
+                $solicitud->save();
+            }
+
+            $this->storeSolicitudFile($solicitud, $request->file('document_front'), 'document_front');
+            $this->storeSolicitudFile($solicitud, $request->file('document_back'), 'document_back');
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
+            $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
+            return log_send_response($log);
         }
 
         $link = env('APP_URL') . "verificar-correo?token=$solicitud->token_verificacion";
@@ -177,6 +197,24 @@ class SolicitudController extends Controller
         }
 
         return sendResponse($solicitud);
+    }
+
+    private function storeSolicitudFile(Solicitud $solicitud, UploadedFile $file, string $field): void
+    {
+        $hashedName = $file->hashName();
+        $directory = "user_solicitudes/{$solicitud->id}";
+        $storedPath = $file->storeAs($directory, $hashedName, 'serverdata');
+
+        $solicitud->files()->create([
+            'key' => $field,
+            'disk' => 'serverdata',
+            'name' => pathinfo($hashedName, PATHINFO_FILENAME),
+            'original_name' => $file->getClientOriginalName(),
+            'path' => $storedPath,
+            'extension' => $file->getClientOriginalExtension(),
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+        ]);
     }
 
     public function verificarCorreo(Request $request)

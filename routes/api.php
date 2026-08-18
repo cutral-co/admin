@@ -11,6 +11,8 @@ use App\Http\Controllers\{
 };
 
 use App\Http\Controllers\DomicilioElectronico\DomicilioElectronicoController;
+use App\Http\Controllers\TurneroLicenciaConducir\Admin\SolicitudController as TurneroLicenciaConducirAdminSolicitudController;
+use App\Http\Controllers\TurneroLicenciaConducir\SolicitudController as TurneroLicenciaConducirSolicitudController;
 use App\Http\Controllers\User\SolicitudController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +24,7 @@ Route::get('legal-content/{key}', [LegalContentController::class, 'show'])->wher
 Route::post('activate_user', [AuthController::class, 'activate_user']);
 
 Route::get('/test/correo', [SolicitudController::class, 'store']);
+Route::post('turnero-licencia-conducir/solicitudes', [TurneroLicenciaConducirSolicitudController::class, 'store']);
 
 Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('logout', [AuthController::class, 'logout']);
@@ -49,6 +52,12 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     Route::get('admin/domicilio-electronico/buscar-cuit/{cuit}', [DomicilioElectronicoController::class, 'buscarContribuyente']);
     Route::get('admin/domicilio-electronico/origenes', [DomicilioElectronicoController::class, 'getOrigenes']);
     Route::post('admin/domicilio-electronico/enviar', [DomicilioElectronicoController::class, 'enviarNotificacionAdmin']);
+
+    /** Turnero Licencia de Conducir - Admin/Backoffice */
+    Route::get('admin/turnero-licencia-conducir/solicitudes', [TurneroLicenciaConducirAdminSolicitudController::class, 'index']);
+    Route::get('admin/turnero-licencia-conducir/solicitudes/estados', [TurneroLicenciaConducirAdminSolicitudController::class, 'estados']);
+    Route::get('admin/turnero-licencia-conducir/solicitudes/{id}', [TurneroLicenciaConducirAdminSolicitudController::class, 'show']);
+    Route::post('admin/turnero-licencia-conducir/solicitudes/{id}/estado', [TurneroLicenciaConducirAdminSolicitudController::class, 'updateEstado']);
 
     Route::post('file', [TestController::class, 'file']);
 

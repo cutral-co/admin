@@ -31,7 +31,7 @@ return new class extends Migration
     {
         Schema::create('turnero_lc_solicitudes', function (Blueprint $table) {
             $table->id();
-            $table->string('cuit', 11);
+            $table->string('dni', 8);
             $table->string('nombre', 100);
             $table->string('apellido', 100);
             $table->string('telefono', 50);
@@ -41,7 +41,7 @@ return new class extends Migration
 
             $table->index('estado');
             $table->index('created_at');
-            $table->index(['cuit', 'estado']);
+            $table->index(['dni', 'estado']);
         });
     }
 

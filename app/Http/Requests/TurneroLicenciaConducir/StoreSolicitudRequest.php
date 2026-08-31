@@ -17,7 +17,7 @@ class StoreSolicitudRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cuit' => ['required', 'string', 'regex:/^(?!0)([0-9]){11}$/'],
+            'dni' => ['required', 'string', 'regex:/^[0-9]{8}$/'],
             'nombre' => ['required', 'string', 'max:100'],
             'apellido' => ['required', 'string', 'max:100'],
             'telefono' => ['required', 'string', 'max:50'],
@@ -28,8 +28,8 @@ class StoreSolicitudRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'cuit.required' => 'CUIT es requerido',
-            'cuit.regex' => 'El CUIT incorporado es inválido',
+            'dni.required' => 'El DNI es requerido',
+            'dni.regex' => 'El DNI debe tener 8 dígitos',
             'nombre.required' => 'El nombre es requerido',
             'apellido.required' => 'El apellido es requerido',
             'telefono.required' => 'El teléfono es requerido',

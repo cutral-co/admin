@@ -14,7 +14,7 @@
         ],
         [
             'title' => 'Datos registrados',
-            'body' => "CUIT: {$solicitud->cuit}\nCorreo electrónico: {$solicitud->email}\nTeléfono: {$solicitud->telefono}",
+            'body' => "DNI: {$solicitud->dni}\nCorreo electrónico: {$solicitud->email}\nTeléfono: {$solicitud->telefono}",
         ],
     ],
     'supportingText' => 'Si necesitás volver a cargar una solicitud, podés hacerlo desde el portal público del turnero.',

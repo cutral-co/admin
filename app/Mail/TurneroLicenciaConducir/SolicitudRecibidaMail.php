@@ -37,7 +37,7 @@ class SolicitudRecibidaMail extends Mailable implements LogsEmailPayload
             'flow' => 'turnero-licencia-conducir',
             'solicitud' => [
                 'id' => $this->solicitud->id,
-                'cuit' => $this->solicitud->cuit,
+                'dni' => $this->solicitud->dni,
                 'estado' => $this->solicitud->estado,
             ],
         ];

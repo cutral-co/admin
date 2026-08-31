@@ -15,7 +15,7 @@ class Solicitud extends Model
     protected $table = 'turnero_lc_solicitudes';
 
     protected $fillable = [
-        'cuit',
+        'dni',
         'nombre',
         'apellido',
         'telefono',

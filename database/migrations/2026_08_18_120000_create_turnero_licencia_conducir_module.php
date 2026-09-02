@@ -36,12 +36,16 @@ return new class extends Migration
             $table->string('apellido', 100);
             $table->string('telefono', 50);
             $table->string('email', 150);
+            $table->string('codigo_verificacion', 6)->nullable();
+            $table->dateTime('fecha_turno')->nullable();
             $table->string('estado', 50);
             $table->timestamps();
 
             $table->index('estado');
             $table->index('created_at');
+            $table->index('fecha_turno');
             $table->index(['dni', 'estado']);
+            $table->index(['dni', 'codigo_verificacion']);
         });
     }
 

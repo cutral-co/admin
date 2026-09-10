@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\{DB, Storage};
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 use App\Http\Controllers\HttpClient\HttpController;
 use App\Http\Controllers\HttpClient\WebLoginTrait;
@@ -17,11 +18,15 @@ use App\Models\DomicilioElectronico\{Domicilio, DomicilioNotificacion, Log, Noti
 use App\Http\Requests\DomicilioElectronico\{DomicilioRequest, BusquedaPorDniRequest, CheckDomicilioOrigenRequest, VerificarDomicilioRequest, EnviarNotificacionRequest};
 use App\Http\Requests\EnviarNotificacionDocuentoRequest;
 use App\Jobs\SendDomicilioElectronicoMessage;
+use App\Mail\DomicilioElectronico\EmailNuevaNotificacion;
 use App\Models\User;
+use App\Services\Email\EmailLogService;
 
 class DomicilioElectronicoController extends \App\Http\Controllers\Controller
 {
     use DomicilioElectronicoTrait;
+
+    public function __construct(private readonly EmailLogService $emailLogService) {}
 
     public function set_domicilio(DomicilioRequest $request)
     {
@@ -100,11 +105,7 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
                 $domicilio->documento
             );
 
-            //$fechaFormateada = formatearFecha($domicilio_notificacion->fecha_recibido);
-            $mensaje = "Usted ha sido notificado en su domicilio electrónico. Para poder ver dicha notificación deberá ingresar a <a href='https://t/#/login'>Cutral Digital</a><br><b>Fecha de notificación: </b> hs.";
-            $subject = 'Nueva notificación electrónica - Municipalidad de Neuquén';
-
-            //sendEmail($domicilio->email, $subject, $mensaje);
+            $this->sendNuevaNotificacionEmail($domicilio, $domicilio_notificacion, $user->id);
 
             Log::create([
                 'domicilio_id' => $domicilio->id,
@@ -268,15 +269,24 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
 
     public function getFile(Request $request)
     {
-        if (isset($request->id)) {
-            $archivo = NotificacionArchivo::obtenerArchivo($request->id);
-            if (!$archivo) {
-                return sendResponse(null, 'No se encuentra autorizado', 403);
-            }
+        $request->validate(['id' => 'required|integer']);
+
+        $archivo = NotificacionArchivo::obtenerArchivo($request->id);
+        if (!$archivo) {
+            return sendResponse(null, 'No se encuentra autorizado', 403);
         }
 
-        $file = getFileStorage($archivo->path);
-        return sendResponse($file);
+        $disk = Storage::disk('local');
+        if (!$disk->exists($archivo->path)) {
+            return sendResponse(null, 'El archivo no se encuentra disponible', 404);
+        }
+
+        $mimeType = $disk->mimeType($archivo->path) ?: 'application/octet-stream';
+
+        return sendResponse([
+            'name' => $archivo->name,
+            'file' => 'data:' . $mimeType . ';base64,' . base64_encode($disk->get($archivo->path)),
+        ]);
     }
 
     // Verifica si la persona tiene usuario en MMD
@@ -991,6 +1001,31 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
         }
     }
 
+    public function descargarConstanciaNotificacion(int $id)
+    {
+        try {
+            $notificacion = Notificacion::with(['origin', 'archivos'])->find($id);
+            $domicilioNotificacion = DomicilioNotificacion::with('domicilio')
+                ->where('notificacion_id', $id)
+                ->first();
+
+            if (!$notificacion || !$domicilioNotificacion) {
+                return sendResponse(null, 'No se encontró la notificación', 404);
+            }
+
+            return Pdf::loadView('pdfs.domicilio-electronico.constancia-notificacion', [
+                'notificacion' => $notificacion,
+                'domicilio' => $domicilioNotificacion->domicilio,
+                'fechaNotificacion' => \Carbon\Carbon::parse($domicilioNotificacion->fecha_recibido),
+            ])
+                ->setPaper('a4')
+                ->download("constancia-notificacion-{$notificacion->id}.pdf");
+        } catch (\Exception $e) {
+            $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
+            return log_send_response($log);
+        }
+    }
+
     /**
      * Busca un contribuyente por CUIT/documento.
      * GET /api/admin/domicilio-electronico/buscar-cuit/{cuit}
@@ -1047,6 +1082,8 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
                 'body' => 'required|string',
                 'origin' => 'required|string',
                 'documento' => 'required|string|size:11',
+                'files' => 'nullable|array|max:10',
+                'files.*' => 'file|max:10240',
             ]);
 
             // Buscar el origen por nombre
@@ -1079,6 +1116,14 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
                 $domicilio->id,
                 $tipo_destinatario,
                 $domicilio->documento
+            );
+
+            $this->saveAdjuntosNotificacion($request->file('files', []), $domicilio_notificacion);
+
+            $this->sendNuevaNotificacionEmail(
+                $domicilio,
+                $domicilio_notificacion,
+                auth()->user()?->id,
             );
 
             Log::create([
@@ -1122,6 +1167,40 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
         } catch (\Exception $e) {
             $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
             return log_send_response($log);
+        }
+    }
+
+    private function sendNuevaNotificacionEmail(
+        Domicilio $domicilio,
+        DomicilioNotificacion $domicilioNotificacion,
+        ?int $triggeredByUserId,
+    ): void {
+        $loginUrl = rtrim((string) env('APP_CLIENT_URL'), '/') . '/#/login';
+
+        $this->emailLogService->send(
+            $domicilio->email,
+            new EmailNuevaNotificacion($loginUrl),
+            Notificacion::class,
+            $domicilioNotificacion->notificacion_id,
+            $triggeredByUserId,
+            $domicilio->nombre,
+        );
+    }
+
+    private function saveAdjuntosNotificacion(array $files, DomicilioNotificacion $domicilioNotificacion): void
+    {
+        foreach ($files as $file) {
+            $path = $file->storeAs(
+                'de/' . $domicilioNotificacion->notificacion_id,
+                $file->hashName(),
+                'local',
+            );
+
+            NotificacionArchivo::create([
+                'name' => $file->getClientOriginalName(),
+                'path' => $path,
+                'notificacion_id' => $domicilioNotificacion->notificacion_id,
+            ]);
         }
     }
 }

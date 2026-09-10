@@ -38,6 +38,7 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('user/domicilio-electronico/enviar-notificacion', [DomicilioElectronicoController::class, 'enviar_notificacion']);
     Route::post('user/domicilio-electronico/has_new_message', [DomicilioElectronicoController::class, 'has_new_message']);
     Route::get('user/domicilio-electronico/notificaciones', [DomicilioElectronicoController::class, 'notificaciones']);
+    Route::post('user/domicilio-electronico/file', [DomicilioElectronicoController::class, 'getFile']);
     Route::post("user/domicilio-electronico/set-view", [DomicilioElectronicoController::class, "set_view"]);
     Route::post("user/domicilio-electronico/set-archivado", [DomicilioElectronicoController::class, "set_archivado"]);
 
@@ -45,6 +46,7 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     Route::get('admin/domicilio-electronico/pendientes', [DomicilioElectronicoController::class, 'getPendientes']);
     Route::post('admin/domicilio-electronico/verificar', [DomicilioElectronicoController::class, 'verificarDomicilio']);
     Route::get('admin/domicilio-electronico/notificaciones', [DomicilioElectronicoController::class, 'getNotificacionesAll']);
+    Route::post('admin/domicilio-electronico/notificaciones/{id}/constancia', [DomicilioElectronicoController::class, 'descargarConstanciaNotificacion']);
     Route::get('admin/domicilio-electronico/domicilios', [DomicilioElectronicoController::class, 'getDomiciliosVerificados']);
     Route::get('admin/domicilio-electronico/buscar-cuit/{cuit}', [DomicilioElectronicoController::class, 'buscarContribuyente']);
     Route::get('admin/domicilio-electronico/origenes', [DomicilioElectronicoController::class, 'getOrigenes']);

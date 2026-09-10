@@ -102,7 +102,7 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
 
             //$fechaFormateada = formatearFecha($domicilio_notificacion->fecha_recibido);
             $mensaje = "Usted ha sido notificado en su domicilio electrónico. Para poder ver dicha notificación deberá ingresar a <a href='https://t/#/login'>Cutral Digital</a><br><b>Fecha de notificación: </b> hs.";
-            $subject = 'Nueva notificación electrónica - Municipalidad de Neuquén';
+            $subject = 'Nueva notificación electrónica - Municipalidad de Cutral Co';
 
             //sendEmail($domicilio->email, $subject, $mensaje);
 

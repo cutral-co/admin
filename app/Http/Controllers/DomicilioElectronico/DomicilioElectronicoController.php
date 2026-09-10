@@ -17,11 +17,15 @@ use App\Models\DomicilioElectronico\{Domicilio, DomicilioNotificacion, Log, Noti
 use App\Http\Requests\DomicilioElectronico\{DomicilioRequest, BusquedaPorDniRequest, CheckDomicilioOrigenRequest, VerificarDomicilioRequest, EnviarNotificacionRequest};
 use App\Http\Requests\EnviarNotificacionDocuentoRequest;
 use App\Jobs\SendDomicilioElectronicoMessage;
+use App\Mail\DomicilioElectronico\EmailNuevaNotificacion;
 use App\Models\User;
+use App\Services\Email\EmailLogService;
 
 class DomicilioElectronicoController extends \App\Http\Controllers\Controller
 {
     use DomicilioElectronicoTrait;
+
+    public function __construct(private readonly EmailLogService $emailLogService) {}
 
     public function set_domicilio(DomicilioRequest $request)
     {
@@ -100,11 +104,7 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
                 $domicilio->documento
             );
 
-            //$fechaFormateada = formatearFecha($domicilio_notificacion->fecha_recibido);
-            $mensaje = "Usted ha sido notificado en su domicilio electrónico. Para poder ver dicha notificación deberá ingresar a <a href='https://t/#/login'>Cutral Digital</a><br><b>Fecha de notificación: </b> hs.";
-            $subject = 'Nueva notificación electrónica - Municipalidad de Cutral Co';
-
-            //sendEmail($domicilio->email, $subject, $mensaje);
+            $this->sendNuevaNotificacionEmail($domicilio, $domicilio_notificacion, $user->id);
 
             Log::create([
                 'domicilio_id' => $domicilio->id,
@@ -1081,6 +1081,12 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
                 $domicilio->documento
             );
 
+            $this->sendNuevaNotificacionEmail(
+                $domicilio,
+                $domicilio_notificacion,
+                auth()->user()?->id,
+            );
+
             Log::create([
                 'domicilio_id' => $domicilio->id,
                 'notificacion_id' => $domicilio_notificacion->notificacion_id,
@@ -1123,5 +1129,22 @@ class DomicilioElectronicoController extends \App\Http\Controllers\Controller
             $log = saveLog($e->getMessage(), get_class() . '::' . __FUNCTION__, $e->getTrace());
             return log_send_response($log);
         }
+    }
+
+    private function sendNuevaNotificacionEmail(
+        Domicilio $domicilio,
+        DomicilioNotificacion $domicilioNotificacion,
+        ?int $triggeredByUserId,
+    ): void {
+        $loginUrl = rtrim((string) env('APP_CLIENT_URL'), '/') . '/#/login';
+
+        $this->emailLogService->send(
+            $domicilio->email,
+            new EmailNuevaNotificacion($loginUrl),
+            Notificacion::class,
+            $domicilioNotificacion->notificacion_id,
+            $triggeredByUserId,
+            $domicilio->nombre,
+        );
     }
 }

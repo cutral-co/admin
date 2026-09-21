@@ -22,7 +22,7 @@ class UpdateSolicitudEstadoRequest extends FormRequest
             'estado' => [
                 'required',
                 'string',
-                Rule::in(Solicitud::estadoOptions()),
+                Rule::in(Solicitud::estadoTurnoOptions()),
             ],
         ];
     }

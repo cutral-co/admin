@@ -1,21 +1,21 @@
 @include('emails.user-solicitud.partials.layout', [
     'tone' => 'primary',
     'eyebrow' => 'Turnero licencia de conducir',
-    'title' => 'Solicitud de turno recibida',
-    'message' => "Hola {$solicitud->nombre} {$solicitud->apellido},\n\nRecibimos correctamente tu solicitud de turno para trámites de licencia de conducir.",
+    'title' => 'Turno confirmado',
+    'message' => "Hola {$solicitud->nombre} {$solicitud->apellido},\n\nTu turno para trámites de licencia de conducir quedó confirmado.",
     'sections' => [
         [
-            'title' => 'Estado de la solicitud',
-            'body' => 'Tu pedido quedó registrado en el sistema con estado pendiente.',
+            'title' => 'Fecha y hora',
+            'body' => $solicitud->fecha_turno->format('d/m/Y H:i') . ' hs.',
         ],
         [
-            'title' => 'Próximo paso',
-            'body' => 'Un agente municipal se pondrá en contacto para continuar con la gestión y coordinar los pasos siguientes.',
+            'title' => 'Estado',
+            'body' => 'El turno fue aprobado automáticamente.',
         ],
         [
             'title' => 'Datos registrados',
             'body' => "DNI: {$solicitud->dni}\nCorreo electrónico: {$solicitud->email}\nTeléfono: {$solicitud->telefono}",
         ],
     ],
-    'supportingText' => 'Si necesitás volver a cargar una solicitud, podés hacerlo desde el portal público del turnero.',
+    'supportingText' => 'Recordá presentarte con la documentación necesaria para realizar el trámite.',
 ])

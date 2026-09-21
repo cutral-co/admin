@@ -15,7 +15,9 @@ return new class extends Migration
 
     public function up(): void
     {
+        $this->createCuposTable();
         $this->createSolicitudesTable();
+        $this->seedCupos();
         $this->registerApps();
         $this->registerPermission();
     }
@@ -25,6 +27,18 @@ return new class extends Migration
         $this->unregisterPermission();
         $this->unregisterApps();
         Schema::dropIfExists('turnero_lc_solicitudes');
+        Schema::dropIfExists('turnero_lc_cupos');
+    }
+
+    private function createCuposTable(): void
+    {
+        Schema::create('turnero_lc_cupos', function (Blueprint $table) {
+            $table->id();
+            $table->time('hora')->unique();
+            $table->unsignedInteger('cantidad');
+            $table->boolean('activo')->default(true);
+            $table->timestamps();
+        });
     }
 
     private function createSolicitudesTable(): void
@@ -47,6 +61,24 @@ return new class extends Migration
             $table->index(['dni', 'estado']);
             $table->index(['dni', 'codigo_verificacion']);
         });
+    }
+
+    private function seedCupos(): void
+    {
+        $now = now();
+        $cupos = [];
+
+        foreach (range(8, 12) as $hora) {
+            $cupos[] = [
+                'hora' => sprintf('%02d:00:00', $hora),
+                'cantidad' => 3,
+                'activo' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        DB::table('turnero_lc_cupos')->insert($cupos);
     }
 
     private function registerApps(): void

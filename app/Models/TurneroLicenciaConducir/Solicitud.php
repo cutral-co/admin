@@ -13,6 +13,8 @@ class Solicitud extends Model
     public const ESTADO_REPROGRAMACION_PENDIENTE = 'reprogramacion-pendiente';
     public const ESTADO_FINALIZADO = 'finalizado';
     public const ESTADO_CANCELADO = 'cancelado';
+    public const ESTADO_FALTO = 'falto';
+    public const ESTADO_PRESENTE = 'presente';
 
     protected $table = 'turnero_lc_solicitudes';
 
@@ -42,5 +44,10 @@ class Solicitud extends Model
             self::ESTADO_FINALIZADO,
             self::ESTADO_CANCELADO,
         ];
+    }
+
+    public static function estadoTurnoOptions(): array
+    {
+        return [self::ESTADO_FALTO, self::ESTADO_PRESENTE];
     }
 }

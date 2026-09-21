@@ -22,6 +22,7 @@ class StoreSolicitudRequest extends FormRequest
             'apellido' => ['required', 'string', 'max:100'],
             'telefono' => ['required', 'string', 'max:50'],
             'email' => ['required', 'email', 'max:150'],
+            'fecha_turno' => ['required', 'date_format:Y-m-d H:i', 'after:now'],
         ];
     }
 
@@ -35,6 +36,9 @@ class StoreSolicitudRequest extends FormRequest
             'telefono.required' => 'El teléfono es requerido',
             'email.required' => 'El correo electrónico es requerido',
             'email.email' => 'El correo electrónico es inválido',
+            'fecha_turno.required' => 'La fecha y hora del turno es requerida',
+            'fecha_turno.date_format' => 'La fecha y hora del turno es inválida',
+            'fecha_turno.after' => 'La fecha y hora del turno debe ser futura',
         ];
     }
 }

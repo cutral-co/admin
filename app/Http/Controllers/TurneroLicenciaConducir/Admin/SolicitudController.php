@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\TurneroLicenciaConducir\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\TurneroLicenciaConducir\AssignTurnoRequest;
 use App\Http\Requests\TurneroLicenciaConducir\UpdateSolicitudEstadoRequest;
 use App\Models\TurneroLicenciaConducir\Solicitud;
 use App\Services\TurneroLicenciaConducir\SolicitudService;
-use Illuminate\Support\Carbon;
+use Illuminate\Http\Request;
 
 class SolicitudController extends Controller
 {
@@ -66,6 +65,14 @@ class SolicitudController extends Controller
                 return sendResponse(null, 'No se encontró la solicitud', 404);
             }
 
+            if ($solicitud->estado !== Solicitud::ESTADO_TURNO_ASIGNADO) {
+                return sendResponse(
+                    null,
+                    'El estado del turno ya fue definido y no puede modificarse',
+                    422,
+                );
+            }
+
             $solicitud->estado = $request->validated()['estado'];
             $solicitud->save();
 
@@ -82,9 +89,36 @@ class SolicitudController extends Controller
             return $response;
         }
 
-        return sendResponse(Solicitud::estadoOptions());
+        return sendResponse(Solicitud::estadoTurnoOptions());
     }
 
+    public function turnosDelDia(Request $request)
+    {
+        if ($response = $this->authorizeAccess()) {
+            return $response;
+        }
+
+        $fecha = $request->input('fecha', now()->toDateString());
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            return sendResponse(null, 'La fecha ingresada es inválida', 422);
+        }
+
+        try {
+            $turnos = Solicitud::query()
+                ->whereDate('fecha_turno', $fecha)
+                ->whereNotIn('estado', [Solicitud::ESTADO_CANCELADO])
+                ->orderBy('fecha_turno')
+                ->get();
+
+            return sendResponse($turnos);
+        } catch (\Throwable $th) {
+            $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /* Flujo anterior de asignación administrativa conservado para una eventual reactivación.
     public function assignTurno(AssignTurnoRequest $request, int $id)
     {
         if ($response = $this->authorizeAccess()) {
@@ -110,6 +144,7 @@ class SolicitudController extends Controller
             return log_send_response($log);
         }
     }
+    */
 
     private function authorizeAccess()
     {

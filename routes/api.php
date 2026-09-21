@@ -25,8 +25,10 @@ Route::post('activate_user', [AuthController::class, 'activate_user']);
 
 Route::get('/test/correo', [SolicitudController::class, 'store']);
 Route::post('turnero-licencia-conducir/solicitudes', [TurneroLicenciaConducirSolicitudController::class, 'store']);
-Route::post('turnero-licencia-conducir/solicitudes/gestionar', [TurneroLicenciaConducirSolicitudController::class, 'gestionar']);
-Route::post('turnero-licencia-conducir/solicitudes/solicitar-cambio', [TurneroLicenciaConducirSolicitudController::class, 'solicitarCambio']);
+Route::get('turnero-licencia-conducir/disponibilidad', [TurneroLicenciaConducirSolicitudController::class, 'disponibilidad']);
+// Flujo anterior de autogestión conservado para una eventual reactivación.
+// Route::post('turnero-licencia-conducir/solicitudes/gestionar', [TurneroLicenciaConducirSolicitudController::class, 'gestionar']);
+// Route::post('turnero-licencia-conducir/solicitudes/solicitar-cambio', [TurneroLicenciaConducirSolicitudController::class, 'solicitarCambio']);
 
 Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('logout', [AuthController::class, 'logout']);
@@ -60,9 +62,11 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     /** Turnero Licencia de Conducir - Admin/Backoffice */
     Route::get('admin/turnero-licencia-conducir/solicitudes', [TurneroLicenciaConducirAdminSolicitudController::class, 'index']);
     Route::get('admin/turnero-licencia-conducir/solicitudes/estados', [TurneroLicenciaConducirAdminSolicitudController::class, 'estados']);
+    Route::get('admin/turnero-licencia-conducir/turnos-del-dia', [TurneroLicenciaConducirAdminSolicitudController::class, 'turnosDelDia']);
     Route::get('admin/turnero-licencia-conducir/solicitudes/{id}', [TurneroLicenciaConducirAdminSolicitudController::class, 'show']);
     Route::post('admin/turnero-licencia-conducir/solicitudes/{id}/estado', [TurneroLicenciaConducirAdminSolicitudController::class, 'updateEstado']);
-    Route::post('admin/turnero-licencia-conducir/solicitudes/{id}/asignar-turno', [TurneroLicenciaConducirAdminSolicitudController::class, 'assignTurno']);
+    // Flujo anterior de asignación administrativa conservado para una eventual reactivación.
+    // Route::post('admin/turnero-licencia-conducir/solicitudes/{id}/asignar-turno', [TurneroLicenciaConducirAdminSolicitudController::class, 'assignTurno']);
 
     Route::post('file', [TestController::class, 'file']);
 

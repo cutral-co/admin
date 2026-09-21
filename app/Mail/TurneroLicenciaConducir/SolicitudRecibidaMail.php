@@ -15,7 +15,7 @@ class SolicitudRecibidaMail extends Mailable implements LogsEmailPayload
 
     public function __construct(public Solicitud $solicitud)
     {
-        $this->subject('Solicitud de turno recibida');
+        $this->subject('Turno de licencia de conducir confirmado');
     }
 
     public function build()

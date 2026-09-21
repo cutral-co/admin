@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\TurneroLicenciaConducir;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\TurneroLicenciaConducir\LookupGestionTurnoRequest;
-use App\Http\Requests\TurneroLicenciaConducir\RequestCambioTurnoRequest;
 use App\Http\Requests\TurneroLicenciaConducir\StoreSolicitudRequest;
 use App\Services\TurneroLicenciaConducir\SolicitudService;
+use DomainException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 class SolicitudController extends Controller
 {
@@ -20,12 +21,37 @@ class SolicitudController extends Controller
             $this->solicitudService->sendSolicitudRecibidaEmail($solicitud);
 
             return sendResponse($solicitud);
+        } catch (DomainException $exception) {
+            return sendResponse(null, $exception->getMessage(), 422);
         } catch (\Throwable $th) {
             $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
             return log_send_response($log);
         }
     }
 
+    public function disponibilidad(Request $request)
+    {
+        $validator = Validator::make($request->only('fecha'), [
+            'fecha' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        if ($validator->fails()) {
+            return sendResponse(null, 'La fecha ingresada es inválida', 422);
+        }
+
+        try {
+            $fecha = $request->filled('fecha')
+                ? Carbon::createFromFormat('Y-m-d', $request->input('fecha'))->startOfDay()
+                : null;
+
+            return sendResponse($this->solicitudService->getDisponibilidad($fecha));
+        } catch (\Throwable $th) {
+            $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
+            return log_send_response($log);
+        }
+    }
+
+    /* Flujo anterior de autogestión conservado para una eventual reactivación.
     public function gestionar(LookupGestionTurnoRequest $request)
     {
         try {
@@ -69,4 +95,5 @@ class SolicitudController extends Controller
             return log_send_response($log);
         }
     }
+    */
 }

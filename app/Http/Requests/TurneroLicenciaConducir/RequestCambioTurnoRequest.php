@@ -19,7 +19,7 @@ class RequestCambioTurnoRequest extends FormRequest
         return [
             'dni' => ['required', 'string', 'regex:/^[0-9]{8}$/'],
             'codigo_verificacion' => ['required', 'string', 'size:6', 'regex:/^[A-Z0-9]{6}$/'],
-            'fecha_turno' => ['required', 'date', 'after:now'],
+            'fecha_turno' => ['required', 'date_format:Y-m-d H:i', 'after:now'],
         ];
     }
 
@@ -39,7 +39,7 @@ class RequestCambioTurnoRequest extends FormRequest
             'codigo_verificacion.size' => 'El código de verificación debe tener 6 caracteres',
             'codigo_verificacion.regex' => 'El código de verificación es inválido',
             'fecha_turno.required' => 'La nueva fecha y hora del turno es requerida',
-            'fecha_turno.date' => 'La nueva fecha y hora del turno es inválida',
+            'fecha_turno.date_format' => 'La nueva fecha y hora del turno es inválida',
             'fecha_turno.after' => 'La nueva fecha y hora del turno debe ser futura',
         ];
     }

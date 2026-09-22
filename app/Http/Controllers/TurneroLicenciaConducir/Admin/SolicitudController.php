@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\TurneroLicenciaConducir\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\TurneroLicenciaConducir\Admin\UpdateTurnoRequest;
 use App\Http\Requests\TurneroLicenciaConducir\UpdateSolicitudEstadoRequest;
 use App\Models\TurneroLicenciaConducir\Solicitud;
 use App\Services\TurneroLicenciaConducir\SolicitudService;
@@ -92,6 +93,47 @@ class SolicitudController extends Controller
         return sendResponse(Solicitud::estadoTurnoOptions());
     }
 
+    public function updateTurno(UpdateTurnoRequest $request, int $id)
+    {
+        if ($response = $this->authorizeAccess()) {
+            return $response;
+        }
+
+        try {
+            $solicitud = Solicitud::find($id);
+
+            if (!$solicitud) {
+                return sendResponse(null, 'No se encontró la solicitud', 404);
+            }
+
+            if ($solicitud->estado !== Solicitud::ESTADO_TURNO_ASIGNADO) {
+                return sendResponse(null, 'El turno no puede modificarse en su estado actual', 422);
+            }
+
+            $validated = $request->validated();
+            $fechaAnterior = $solicitud->fecha_turno?->format('Y-m-d H:i');
+            $emailAnterior = $solicitud->email;
+            $solicitud = $this->solicitudService->changeTurno(
+                $solicitud,
+                \Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i', $validated['fecha_turno']),
+            );
+            $solicitud->email = $validated['email'];
+            $solicitud->save();
+            $solicitud = $solicitud->fresh();
+
+            if ($fechaAnterior !== $solicitud->fecha_turno?->format('Y-m-d H:i') || $emailAnterior !== $solicitud->email) {
+                $this->solicitudService->sendTurnoModificadoEmail($solicitud);
+            }
+
+            return sendResponse($solicitud);
+        } catch (\DomainException $exception) {
+            return sendResponse(null, $exception->getMessage(), 422);
+        } catch (\Throwable $th) {
+            $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
+            return log_send_response($log);
+        }
+    }
+
     public function turnosDelDia(Request $request)
     {
         if ($response = $this->authorizeAccess()) {
@@ -116,6 +158,30 @@ class SolicitudController extends Controller
             $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
             return log_send_response($log);
         }
+    }
+
+    public function descargarTurnosDelDia()
+    {
+        if ($response = $this->authorizeAccess()) {
+            return $response;
+        }
+
+        return $this->descargarTurnos(
+            Solicitud::query()->whereDate('fecha_turno', now()->toDateString()),
+            'turnos-del-dia-' . now()->format('Y-m-d') . '.csv',
+        );
+    }
+
+    public function descargarTodosLosTurnos()
+    {
+        if ($response = $this->authorizeAccess()) {
+            return $response;
+        }
+
+        return $this->descargarTurnos(
+            Solicitud::query()->whereDate('fecha_turno', '>=', now()->toDateString()),
+            'turnos-desde-' . now()->format('Y-m-d') . '.csv',
+        );
     }
 
     /* Flujo anterior de asignación administrativa conservado para una eventual reactivación.
@@ -155,5 +221,31 @@ class SolicitudController extends Controller
         }
 
         return null;
+    }
+
+    private function descargarTurnos($query, string $filename)
+    {
+        $query
+            ->whereNotNull('fecha_turno')
+            ->whereNotIn('estado', [Solicitud::ESTADO_CANCELADO])
+            ->orderBy('fecha_turno');
+
+        return response()->streamDownload(function () use ($query) {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['DNI', 'Nombre', 'Email', 'Fecha', 'Hora']);
+
+            foreach ($query->cursor() as $solicitud) {
+                fputcsv($handle, [
+                    $solicitud->dni,
+                    trim($solicitud->nombre . ' ' . $solicitud->apellido),
+                    $solicitud->email,
+                    $solicitud->fecha_turno?->format('d/m/Y'),
+                    $solicitud->fecha_turno?->format('H:i'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

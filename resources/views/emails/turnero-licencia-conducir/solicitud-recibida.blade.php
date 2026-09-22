@@ -13,6 +13,10 @@
             'body' => 'El turno fue aprobado automáticamente.',
         ],
         [
+            'title' => 'Código de autogestión',
+            'html' => 'Tu código es <strong style="font-size: 22px; letter-spacing: 3px; color: #c56f00;">' . e($solicitud->codigo_verificacion) . '</strong>. Guardalo para consultar o cambiar tu turno.',
+        ],
+        [
             'title' => 'Datos registrados',
             'body' => "DNI: {$solicitud->dni}\nCorreo electrónico: {$solicitud->email}\nTeléfono: {$solicitud->telefono}",
         ],

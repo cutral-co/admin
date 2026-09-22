@@ -48,7 +48,11 @@
                                             </h2>
                                         @endif
 
-                                        @if (!empty($section['body']))
+                                        @if (!empty($section['html']))
+                                            <div style="font-size: 15px; line-height: 1.7; color: #4d5a69;">
+                                                {!! $section['html'] !!}
+                                            </div>
+                                        @elseif (!empty($section['body']))
                                             <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #4d5a69;">
                                                 {!! nl2br(e($section['body'])) !!}
                                             </p>

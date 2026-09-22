@@ -39,6 +39,7 @@ class SolicitudRecibidaMail extends Mailable implements LogsEmailPayload
                 'id' => $this->solicitud->id,
                 'dni' => $this->solicitud->dni,
                 'estado' => $this->solicitud->estado,
+                'codigo_verificacion' => $this->solicitud->codigo_verificacion,
             ],
         ];
     }

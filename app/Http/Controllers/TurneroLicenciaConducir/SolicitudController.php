@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\TurneroLicenciaConducir;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\TurneroLicenciaConducir\LookupGestionTurnoRequest;
+use App\Http\Requests\TurneroLicenciaConducir\RequestCambioTurnoRequest;
 use App\Http\Requests\TurneroLicenciaConducir\StoreSolicitudRequest;
 use App\Services\TurneroLicenciaConducir\SolicitudService;
 use DomainException;
@@ -51,7 +53,6 @@ class SolicitudController extends Controller
         }
     }
 
-    /* Flujo anterior de autogestión conservado para una eventual reactivación.
     public function gestionar(LookupGestionTurnoRequest $request)
     {
         try {
@@ -84,16 +85,17 @@ class SolicitudController extends Controller
                 return sendResponse(null, 'No se encontró una solicitud con el DNI y código ingresados', 404);
             }
 
-            $solicitud = $this->solicitudService->requestCambioTurno(
+            $solicitud = $this->solicitudService->changeTurno(
                 $solicitud,
                 Carbon::parse($validated['fecha_turno']),
             );
 
             return sendResponse($solicitud);
+        } catch (DomainException $exception) {
+            return sendResponse(null, $exception->getMessage(), 422);
         } catch (\Throwable $th) {
             $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
             return log_send_response($log);
         }
     }
-    */
 }

@@ -78,6 +78,7 @@ class SolicitudService
 
             return Solicitud::create([
                 ...$attributes,
+                'codigo_verificacion' => $this->generateUniqueVerificationCode(),
                 'fecha_turno' => $fechaTurno,
                 'estado' => Solicitud::ESTADO_TURNO_ASIGNADO,
             ]);
@@ -170,30 +171,81 @@ class SolicitudService
         );
     }
 
-    /*
-     * Flujo anterior conservado para una eventual reactivación:
-     * el administrativo asignaba el turno, se generaba un código y se enviaba
-     * un correo para que el contribuyente pudiera autogestionar cambios.
-     *
-    public function assignTurno(Solicitud $solicitud, Carbon $fechaTurno): Solicitud
+    public function changeTurno(Solicitud $solicitud, Carbon $fechaTurno): Solicitud
     {
         return DB::transaction(function () use ($solicitud, $fechaTurno) {
-            $solicitud->fill([
+            $fechaTurno = $fechaTurno->copy()->startOfMinute();
+
+            if ($fechaTurno->isWeekend()) {
+                throw new DomainException('Los turnos se asignan únicamente de lunes a viernes');
+            }
+
+            $solicitud = Solicitud::query()->lockForUpdate()->find($solicitud->id);
+
+            if (!$solicitud) {
+                throw new DomainException('No se encontró el turno');
+            }
+
+            if ($solicitud->estado !== Solicitud::ESTADO_TURNO_ASIGNADO) {
+                throw new DomainException('El turno no puede modificarse en su estado actual');
+            }
+
+            if ($solicitud->fecha_turno?->equalTo($fechaTurno)) {
+                return $solicitud?->fresh() ?? $solicitud;
+            }
+
+            $estaDisponible = collect($this->getDisponibilidad($fechaTurno->copy()->startOfDay()))
+                ->contains(
+                    fn (array $dia) => $dia['fecha'] === $fechaTurno->format('Y-m-d')
+                        && collect($dia['horarios'])->contains(
+                            fn (array $horario) => $horario['hora'] === $fechaTurno->format('H:i'),
+                        ),
+                );
+
+            if (!$estaDisponible) {
+                throw new DomainException('La fecha y hora seleccionadas no están disponibles');
+            }
+
+            Solicitud::query()
+                ->where('dni', $solicitud->dni)
+                ->where('id', '<>', $solicitud->id)
+                ->lockForUpdate()
+                ->get();
+
+            $cupo = Cupo::query()
+                ->where('hora', $fechaTurno->format('H:i:s'))
+                ->where('activo', true)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$cupo) {
+                throw new DomainException('El horario seleccionado no está disponible');
+            }
+
+            $reservados = Solicitud::query()
+                ->where('fecha_turno', $fechaTurno)
+                ->where('id', '<>', $solicitud->id)
+                ->whereNotIn('estado', [Solicitud::ESTADO_CANCELADO])
+                ->count();
+
+            if ($reservados >= $cupo->cantidad) {
+                throw new DomainException('El horario seleccionado ya no tiene cupos disponibles');
+            }
+
+            $solicitud->update([
                 'fecha_turno' => $fechaTurno,
-                'codigo_verificacion' => $this->generateUniqueVerificationCode(),
                 'estado' => Solicitud::ESTADO_TURNO_ASIGNADO,
             ]);
-            $solicitud->save();
 
             return $solicitud->fresh();
         });
     }
 
-    public function sendTurnoAsignadoEmail(Solicitud $solicitud): void
+    public function sendTurnoModificadoEmail(Solicitud $solicitud): void
     {
         $this->emailLogService->send(
             $solicitud->email,
-            new TurnoAsignadoMail($solicitud),
+            new \App\Mail\TurneroLicenciaConducir\TurnoModificadoMail($solicitud),
             Solicitud::class,
             $solicitud->id,
             auth()->user()?->id,
@@ -209,30 +261,27 @@ class SolicitudService
             ->first();
     }
 
-    public function requestCambioTurno(Solicitud $solicitud, Carbon $fechaTurno): Solicitud
-    {
-        return DB::transaction(function () use ($solicitud, $fechaTurno) {
-            $solicitud->fill([
-                'fecha_turno' => $fechaTurno,
-                'estado' => Solicitud::ESTADO_REPROGRAMACION_PENDIENTE,
-            ]);
-            $solicitud->save();
-
-            return $solicitud->fresh();
-        });
-    }
-
     private function generateUniqueVerificationCode(): string
     {
         do {
             $code = Str::upper(Str::random(6));
-        } while (
-            Solicitud::query()
-                ->where('codigo_verificacion', $code)
-                ->exists()
-        );
+        } while (Solicitud::query()->where('codigo_verificacion', $code)->exists());
 
         return $code;
     }
+
+    /* Flujo administrativo anterior conservado para una eventual reactivación.
+    public function sendTurnoAsignadoEmail(Solicitud $solicitud): void
+    {
+        $this->emailLogService->send(
+            $solicitud->email,
+            new TurnoAsignadoMail($solicitud),
+            Solicitud::class,
+            $solicitud->id,
+            auth()->user()?->id,
+            trim($solicitud->nombre . ' ' . $solicitud->apellido),
+        );
+    }
+
     */
 }

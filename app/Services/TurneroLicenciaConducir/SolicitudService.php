@@ -14,6 +14,8 @@ use DomainException;
 
 class SolicitudService
 {
+    private const FECHA_MINIMA_DISPONIBILIDAD = '2026-10-26';
+
     public function __construct(private readonly EmailLogService $emailLogService) {}
 
     public function create(array $attributes): Solicitud
@@ -97,7 +99,9 @@ class SolicitudService
             return [];
         }
 
-        $hoy = now()->startOfDay();
+        $hoy = now()->startOfDay()->max(
+            Carbon::createFromFormat('Y-m-d', self::FECHA_MINIMA_DISPONIBILIDAD)->startOfDay(),
+        );
         $reservados = Solicitud::query()
             ->where('fecha_turno', '>=', $hoy)
             ->whereNotIn('estado', [Solicitud::ESTADO_CANCELADO])
@@ -132,6 +136,10 @@ class SolicitudService
         };
 
         if ($fechaSeleccionada) {
+            if ($fechaSeleccionada->lt($hoy)) {
+                return [];
+            }
+
             $horarios = $horariosPara($fechaSeleccionada);
 
             return $horarios === [] ? [] : [[

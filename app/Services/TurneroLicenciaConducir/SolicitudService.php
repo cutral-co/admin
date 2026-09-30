@@ -14,7 +14,7 @@ use DomainException;
 
 class SolicitudService
 {
-    private const FECHA_MINIMA_DISPONIBILIDAD = '2026-10-26';
+    private const FECHA_MINIMA_DISPONIBILIDAD = '2026-10-15';
 
     public function __construct(private readonly EmailLogService $emailLogService) {}
 

@@ -16,7 +16,7 @@ class EmailRechazo extends Mailable implements LogsEmailPayload
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(public string $motivo)
     {
         $this->subject('Se rechazo la solicitud');
     }
@@ -28,7 +28,9 @@ class EmailRechazo extends Mailable implements LogsEmailPayload
      */
     public function build()
     {
-        return $this->view('emails.user-solicitud.rechazo');
+        return $this->view('emails.user-solicitud.rechazo', [
+            'motivo' => $this->motivo,
+        ]);
     }
 
     public function getEmailTemplateKey(): string
@@ -41,6 +43,7 @@ class EmailRechazo extends Mailable implements LogsEmailPayload
         return [
             'action' => 'registration-rejected',
             'flow' => 'user-registration',
+            'motivo_rechazo' => $this->motivo,
         ];
     }
 

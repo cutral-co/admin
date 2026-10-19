@@ -74,8 +74,16 @@ class SolicitudController extends Controller
                 );
             }
 
-            $solicitud->estado = $request->validated()['estado'];
+            $validated = $request->validated();
+            $solicitud->estado = $validated['estado'];
+            if ($solicitud->estado === Solicitud::ESTADO_CANCELADO) {
+                $solicitud->motivo_cancelacion = trim($validated['motivo_cancelacion']);
+            }
             $solicitud->save();
+
+            if ($solicitud->estado === Solicitud::ESTADO_CANCELADO) {
+                $this->solicitudService->sendTurnoCanceladoEmail($solicitud);
+            }
 
             return sendResponse($solicitud->fresh());
         } catch (\Throwable $th) {

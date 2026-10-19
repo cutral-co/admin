@@ -56,6 +56,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index('estado');
+            $table->text('motivo_cancelacion')->nullable();
             $table->index('created_at');
             $table->index('fecha_turno');
             $table->index(['dni', 'estado']);

@@ -22,8 +22,9 @@ class UpdateSolicitudEstadoRequest extends FormRequest
             'estado' => [
                 'required',
                 'string',
-                Rule::in(Solicitud::estadoTurnoOptions()),
+                Rule::in([...Solicitud::estadoTurnoOptions(), Solicitud::ESTADO_CANCELADO]),
             ],
+            'motivo_cancelacion' => ['required_if:estado,cancelado', 'nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -32,6 +33,7 @@ class UpdateSolicitudEstadoRequest extends FormRequest
         return [
             'estado.required' => 'El estado es requerido',
             'estado.in' => 'El estado seleccionado es inválido',
+            'motivo_cancelacion.required_if' => 'El motivo de cancelación es obligatorio',
         ];
     }
 }

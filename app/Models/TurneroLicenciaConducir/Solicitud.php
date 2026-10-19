@@ -27,6 +27,7 @@ class Solicitud extends Model
         'codigo_verificacion',
         'fecha_turno',
         'estado',
+        'motivo_cancelacion',
     ];
 
     protected $casts = [

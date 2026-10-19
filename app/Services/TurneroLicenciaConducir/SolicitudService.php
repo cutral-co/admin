@@ -4,6 +4,7 @@ namespace App\Services\TurneroLicenciaConducir;
 
 use App\Mail\TurneroLicenciaConducir\SolicitudRecibidaMail;
 use App\Mail\TurneroLicenciaConducir\TurnoAsignadoMail;
+use App\Mail\TurneroLicenciaConducir\TurnoCanceladoMail;
 use App\Models\TurneroLicenciaConducir\Cupo;
 use App\Models\TurneroLicenciaConducir\Solicitud;
 use App\Services\Email\EmailLogService;
@@ -254,6 +255,18 @@ class SolicitudService
         $this->emailLogService->send(
             $solicitud->email,
             new \App\Mail\TurneroLicenciaConducir\TurnoModificadoMail($solicitud),
+            Solicitud::class,
+            $solicitud->id,
+            auth()->user()?->id,
+            trim($solicitud->nombre . ' ' . $solicitud->apellido),
+        );
+    }
+
+    public function sendTurnoCanceladoEmail(Solicitud $solicitud): void
+    {
+        $this->emailLogService->send(
+            $solicitud->email,
+            new TurnoCanceladoMail($solicitud, $solicitud->motivo_cancelacion),
             Solicitud::class,
             $solicitud->id,
             auth()->user()?->id,

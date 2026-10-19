@@ -34,6 +34,7 @@ class CreateUsersSolicitudesTable extends Migration
             $table->timestamp('ultimo_envio_email')->nullable();
             $table->timestamp('fecha_verificado')->nullable();
             $table->unsignedBigInteger('estado_id')->default(1);
+            $table->text('motivo_rechazo')->nullable();
 
             $table->timestamps();
 

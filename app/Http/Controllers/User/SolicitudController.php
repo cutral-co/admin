@@ -75,6 +75,12 @@ class SolicitudController extends Controller
     public function cambiarEstado(Request $request)
     {
         try {
+            $request->validate([
+                'id' => ['required', 'integer'],
+                'estado_id' => ['required', 'integer'],
+                'motivo_rechazo' => ['nullable', 'string', 'max:2000'],
+            ]);
+
             DB::beginTransaction();
 
             $solicitud = Solicitud::find($request->id);
@@ -89,6 +95,12 @@ class SolicitudController extends Controller
                 return sendResponse(null, 'Estado invalido', 422);
             }
 
+            $motivoRechazo = trim((string) $request->input('motivo_rechazo', ''));
+            if ($estadoDestino->value === 'rechazado' && $motivoRechazo === '') {
+                DB::rollBack();
+                return sendResponse(null, 'El motivo del rechazo es obligatorio', 422);
+            }
+
             $mailData = null;
 
             if ($estadoDestino->value === 'aprobado') {
@@ -96,7 +108,7 @@ class SolicitudController extends Controller
             }
 
             if ($estadoDestino->value === 'rechazado') {
-                $solicitud->rechazarSolicitud();
+                $solicitud->rechazarSolicitud($motivoRechazo);
             }
 
             if (!in_array($estadoDestino->value, ['aprobado', 'rechazado'], true)) {
@@ -119,7 +131,7 @@ class SolicitudController extends Controller
             if ($estadoDestino->value === 'rechazado') {
                 $this->emailLogService->send(
                     $solicitud->email,
-                    new EmailRechazo(),
+                    new EmailRechazo($solicitud->motivo_rechazo),
                     Solicitud::class,
                     $solicitud->id,
                     auth()->user()?->id,
@@ -324,7 +336,7 @@ class SolicitudController extends Controller
             $mailable = match ($type) {
                 'confirmacion' => new EmailConfirmacion($link),
                 'aprobacion' => new EmailAprobacion('20123456789', 'ABC123'),
-                'rechazo' => new EmailRechazo(),
+                'rechazo' => new EmailRechazo('Motivo de ejemplo'),
                 'post-confirmacion' => new EmailPostConfirmacion(),
                 default => null,
             };

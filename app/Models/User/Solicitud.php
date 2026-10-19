@@ -48,6 +48,7 @@ class Solicitud extends Model
         "ultimo_envio_email",
         "fecha_verificado",
         "estado_id",
+        "motivo_rechazo",
     ];
 
     protected $hidden = [
@@ -143,7 +144,7 @@ class Solicitud extends Model
         ];
     }
 
-    public function rechazarSolicitud(): void
+    public function rechazarSolicitud(string $motivo): void
     {
         $this->assertPuedeCambiarEstado();
 
@@ -153,6 +154,7 @@ class Solicitud extends Model
         }
 
         $this->estado_id = $estadoRechazado->id;
+        $this->motivo_rechazo = $motivo;
         $this->save();
     }
 

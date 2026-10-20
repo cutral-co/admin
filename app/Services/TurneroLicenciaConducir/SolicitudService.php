@@ -17,6 +17,15 @@ class SolicitudService
 {
     private const FECHA_MINIMA_DISPONIBILIDAD = '2026-10-15';
 
+    // Parche temporal: agregar aquí las fechas que no deben ofrecerse para turnos.
+    private const FECHAS_EXCLUIDAS = [
+        '22-10-2026',
+        '23-11-2026',
+        '07-12-2026',
+        '08-12-2026',
+        // '31-12-2026',
+    ];
+
     public function __construct(private readonly EmailLogService $emailLogService) {}
 
     public function create(array $attributes): Solicitud
@@ -110,7 +119,7 @@ class SolicitudService
             ->countBy(fn (Solicitud $solicitud) => $solicitud->fecha_turno->format('Y-m-d H:i'));
 
         $horariosPara = function (Carbon $fecha) use ($cupos, $reservados): array {
-            if ($fecha->isWeekend()) {
+            if ($fecha->isWeekend() || $this->fechaExcluida($fecha)) {
                 return [];
             }
 
@@ -289,6 +298,11 @@ class SolicitudService
         } while (Solicitud::query()->where('codigo_verificacion', $code)->exists());
 
         return $code;
+    }
+
+    private function fechaExcluida(Carbon $fecha): bool
+    {
+        return in_array($fecha->format('d-m-Y'), self::FECHAS_EXCLUIDAS, true);
     }
 
     /* Flujo administrativo anterior conservado para una eventual reactivación.

@@ -13,6 +13,7 @@ use App\Http\Controllers\{
 use App\Http\Controllers\DomicilioElectronico\DomicilioElectronicoController;
 use App\Http\Controllers\TurneroLicenciaConducir\Admin\SolicitudController as TurneroLicenciaConducirAdminSolicitudController;
 use App\Http\Controllers\TurneroLicenciaConducir\SolicitudController as TurneroLicenciaConducirSolicitudController;
+use App\Http\Controllers\TramitesPatentes\Admin\TramiteController as TramitesPatentesAdminTramiteController;
 use App\Http\Controllers\User\SolicitudController;
 use Illuminate\Support\Facades\Route;
 
@@ -69,6 +70,14 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     Route::post('admin/turnero-licencia-conducir/solicitudes/{id}/turno', [TurneroLicenciaConducirAdminSolicitudController::class, 'updateTurno']);
     // Flujo anterior de asignación administrativa conservado para una eventual reactivación.
     // Route::post('admin/turnero-licencia-conducir/solicitudes/{id}/asignar-turno', [TurneroLicenciaConducirAdminSolicitudController::class, 'assignTurno']);
+
+    /** Trámites de Patentes - Admin/Backoffice */
+    Route::get('admin/tramites-patentes/tramites', [TramitesPatentesAdminTramiteController::class, 'index']);
+    Route::get('admin/tramites-patentes/tramites/{id}', [TramitesPatentesAdminTramiteController::class, 'show']);
+    Route::post('admin/tramites-patentes/tramites/{id}/aprobar', [TramitesPatentesAdminTramiteController::class, 'aprobar']);
+    Route::post('admin/tramites-patentes/tramites/{id}/rechazar', [TramitesPatentesAdminTramiteController::class, 'rechazar']);
+    Route::post('admin/tramites-patentes/tramites/{id}/devolver', [TramitesPatentesAdminTramiteController::class, 'devolver']);
+    Route::post('admin/tramites-patentes/tramites/{id}/solicitar-documento', [TramitesPatentesAdminTramiteController::class, 'solicitarDocumento']);
 
     Route::post('file', [TestController::class, 'file']);
 

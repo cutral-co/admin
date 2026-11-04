@@ -82,6 +82,8 @@ return new class extends Migration
 
             $table->index(['tramite_id', 'created_at']);
         });
+
+        $this->registerInitialRequirements();
     }
 
     public function down(): void
@@ -125,6 +127,51 @@ return new class extends Migration
         $sudoRole = Role::query()->where('name', 'sudo')->first();
         if ($sudoRole && !$sudoRole->hasPermissionTo($permission)) {
             $sudoRole->givePermissionTo($permission);
+        }
+    }
+
+    private function registerInitialRequirements(): void
+    {
+        $now = now();
+
+        DB::table('tram_pat_tipos_tramites')->updateOrInsert(
+            ['codigo' => 'alta-vehiculo-0km'],
+            [
+                'titulo' => 'Alta impositiva de vehículo 0 km',
+                'descripcion' => 'Primera alta para vehículos recién adquiridos.',
+                'activo' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
+
+        $tipoTramiteId = DB::table('tram_pat_tipos_tramites')
+            ->where('codigo', 'alta-vehiculo-0km')
+            ->value('id');
+
+        foreach ([
+            [
+                'titulo' => 'Título del Automotor',
+                'descripcion' => null,
+                'formatos_permitidos' => json_encode(['application/pdf']),
+                'requerido' => true,
+                'orden' => 1,
+            ],
+            [
+                'titulo' => 'Factura de compra',
+                'descripcion' => null,
+                'formatos_permitidos' => json_encode(['application/pdf']),
+                'requerido' => true,
+                'orden' => 2,
+            ],
+        ] as $requisito) {
+            DB::table('tram_pat_requisitos_documentacion')->updateOrInsert(
+                [
+                    'tipo_tramite_id' => $tipoTramiteId,
+                    'titulo' => $requisito['titulo'],
+                ],
+                [...$requisito, 'activo' => true, 'created_at' => $now, 'updated_at' => $now],
+            );
         }
     }
 

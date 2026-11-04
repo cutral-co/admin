@@ -8,6 +8,7 @@ use App\Models\TramitesPatentes\RequisitoDocumentacion;
 use App\Models\TramitesPatentes\Tramite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TramiteController extends Controller
 {
@@ -19,7 +20,12 @@ class TramiteController extends Controller
             return $response;
         }
 
-        return sendResponse(Tramite::query()->with('tipoTramite')->latest()->get());
+        return sendResponse(
+            Tramite::query()
+                ->with(['tipoTramite', 'solicitante.person', 'documentos'])
+                ->latest()
+                ->get(),
+        );
     }
 
     public function show(int $id)
@@ -37,9 +43,36 @@ class TramiteController extends Controller
             : sendResponse(null, 'No se encontró el trámite', 404);
     }
 
-    public function aprobar(int $id)
+    public function documento(int $id, int $documentoId)
     {
-        return $this->changeState($id, Tramite::ESTADO_APROBADO, 'aprobado');
+        if ($response = $this->authorizeAccess()) {
+            return $response;
+        }
+
+        $documento = Documento::query()
+            ->where('tramite_id', $id)
+            ->find($documentoId);
+
+        if (!$documento || !$documento->ruta || !Storage::disk('serverdata')->exists($documento->ruta)) {
+            return sendResponse(null, 'No se encontró el documento solicitado', 404);
+        }
+
+        $file = get_file($documento->ruta);
+        $file['file_name'] = $documento->nombre_original ?? $file['file_name'];
+
+        return sendResponse($file);
+    }
+
+    public function aprobar(Request $request, int $id)
+    {
+        $validated = $request->validate(['observacion' => ['nullable', 'string', 'max:2000']]);
+
+        return $this->changeState(
+            $id,
+            Tramite::ESTADO_APROBADO,
+            'aprobado',
+            $validated['observacion'] ?? null,
+        );
     }
 
     public function rechazar(Request $request, int $id)
@@ -51,14 +84,52 @@ class TramiteController extends Controller
 
     public function devolver(Request $request, int $id)
     {
-        $validated = $request->validate(['observacion' => ['required', 'string', 'max:2000']]);
+        $validated = $request->validate([
+            'documento_ids' => ['nullable', 'array'],
+            'documento_ids.*' => ['integer'],
+            'observacion' => ['required', 'string', 'max:2000'],
+        ]);
 
-        return $this->changeState(
-            $id,
-            Tramite::ESTADO_DOCUMENTACION_REQUERIDA,
-            'devuelto',
-            $validated['observacion'],
-        );
+        if ($response = $this->authorizeAccess()) {
+            return $response;
+        }
+
+        try {
+            return DB::transaction(function () use ($id, $validated) {
+                $tramite = Tramite::find($id);
+                if (!$tramite) {
+                    return sendResponse(null, 'No se encontró el trámite', 404);
+                }
+
+                $documentoIds = collect($validated['documento_ids'] ?? [])
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $documentos = $tramite->documentos()
+                    ->whereIn('id', $documentoIds)
+                    ->get();
+
+                if ($documentos->count() !== $documentoIds->count()) {
+                    return sendResponse(null, 'Uno o más documentos no corresponden al trámite', 422);
+                }
+
+                foreach ($documentos as $documento) {
+                    $documento->estado = 'observado';
+                    $documento->observacion = $validated['observacion'];
+                    $documento->save();
+                }
+
+                $tramite->estado = Tramite::ESTADO_DOCUMENTACION_REQUERIDA;
+                $tramite->observacion_final = $validated['observacion'];
+                $tramite->save();
+                $this->registerMovement($tramite, 'devuelto', $validated['observacion']);
+
+                return sendResponse($tramite->fresh(['documentos', 'movimientos']));
+            });
+        } catch (\Throwable $th) {
+            $log = saveLog($th->getMessage(), get_class() . '::' . __FUNCTION__, $th->getTrace());
+            return log_send_response($log);
+        }
     }
 
     public function solicitarDocumento(Request $request, int $id)

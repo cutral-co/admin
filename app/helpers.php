@@ -64,7 +64,7 @@ if (!function_exists('get_file')) {
             'size' => $fileInfo->getSize(),
 
             /* Enviamos el archivo como base64 */
-            'file' => 'data:application/' . $type . ';base64,' . base64_encode($fileInfo),
+            'file' => 'data:' . $fileInfo->getMimeType() . ';base64,' . base64_encode(file_get_contents($fullPath)),
         ];
     }
 }

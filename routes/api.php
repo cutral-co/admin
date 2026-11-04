@@ -14,6 +14,8 @@ use App\Http\Controllers\DomicilioElectronico\DomicilioElectronicoController;
 use App\Http\Controllers\TurneroLicenciaConducir\Admin\SolicitudController as TurneroLicenciaConducirAdminSolicitudController;
 use App\Http\Controllers\TurneroLicenciaConducir\SolicitudController as TurneroLicenciaConducirSolicitudController;
 use App\Http\Controllers\TramitesPatentes\Admin\TramiteController as TramitesPatentesAdminTramiteController;
+use App\Http\Controllers\TramitesPatentes\TipoTramiteController as TramitesPatentesTipoTramiteController;
+use App\Http\Controllers\TramitesPatentes\TramiteController as TramitesPatentesTramiteController;
 use App\Http\Controllers\User\SolicitudController;
 use Illuminate\Support\Facades\Route;
 
@@ -74,10 +76,17 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     /** Trámites de Patentes - Admin/Backoffice */
     Route::get('admin/tramites-patentes/tramites', [TramitesPatentesAdminTramiteController::class, 'index']);
     Route::get('admin/tramites-patentes/tramites/{id}', [TramitesPatentesAdminTramiteController::class, 'show']);
+    Route::get('admin/tramites-patentes/tramites/{id}/documentos/{documentoId}', [TramitesPatentesAdminTramiteController::class, 'documento']);
     Route::post('admin/tramites-patentes/tramites/{id}/aprobar', [TramitesPatentesAdminTramiteController::class, 'aprobar']);
     Route::post('admin/tramites-patentes/tramites/{id}/rechazar', [TramitesPatentesAdminTramiteController::class, 'rechazar']);
     Route::post('admin/tramites-patentes/tramites/{id}/devolver', [TramitesPatentesAdminTramiteController::class, 'devolver']);
     Route::post('admin/tramites-patentes/tramites/{id}/solicitar-documento', [TramitesPatentesAdminTramiteController::class, 'solicitarDocumento']);
+
+    /** Trámites de Patentes - Usuario */
+    Route::get('tramites-patentes/tipos/{codigo}', [TramitesPatentesTipoTramiteController::class, 'show']);
+    Route::get('tramites-patentes/tramites', [TramitesPatentesTramiteController::class, 'index']);
+    Route::get('tramites-patentes/tramites/{id}', [TramitesPatentesTramiteController::class, 'show']);
+    Route::post('tramites-patentes/tramites', [TramitesPatentesTramiteController::class, 'store']);
 
     Route::post('file', [TestController::class, 'file']);
 
